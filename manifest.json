@@ -1,6 +1,6 @@
 {
-  "name": "Семейный бюджет",
-  "short_name": "Бюджет",
+  "name": "Urvan Finance",
+  "short_name": "Urvan Finance",
   "description": "Учёт семейного бюджета",
   "start_url": "./index.html",
   "scope": "./",

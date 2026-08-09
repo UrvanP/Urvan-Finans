@@ -287,6 +287,52 @@ main#app {
   color: rgba(255, 255, 255, 0.85);
 }
 
+/* ---------- Подвкладки члена семьи (Банк счёт / копилки) ---------- */
+
+.subtabs {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  margin-bottom: 16px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.subtab-btn {
+  flex: 0 0 auto;
+  padding: 8px 14px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.subtab-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.subtab-add {
+  flex: 0 0 auto;
+  width: 34px;
+  padding: 8px 0;
+  text-align: center;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.savings-header-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 .balance-card.total .amount {
   color: #fff;
 }

@@ -252,14 +252,40 @@ function attachOverviewEvents() {
 // Вкладка члена семьи
 // ---------------------------------------------------------------
 
+// memberId -> 'current' или id выбранной копилки. Хранит, какая
+// подвкладка сейчас открыта у каждого члена семьи.
+let memberSubTab = {};
+
 function renderMemberTab(memberId) {
   const member = state.members.find((m) => m.id === memberId);
   if (!member) return `<div class="empty-hint">${t('empty_member_not_found')}</div>`;
 
   const account = currentAccountOf(memberId);
   const savings = savingsAccountsOf(memberId);
-  const balance = accountBalance(account);
 
+  let selected = memberSubTab[memberId] || 'current';
+  if (selected !== 'current' && !savings.find((s) => s.id === selected)) {
+    selected = 'current';
+  }
+  memberSubTab[memberId] = selected;
+
+  const subtabsHtml = `
+    <div class="subtabs" id="member-subtabs">
+      <button class="subtab-btn ${selected === 'current' ? 'active' : ''}" data-subtab="current">${t('subtab_bank')}</button>
+      ${savings.map((s) => `<button class="subtab-btn ${selected === s.id ? 'active' : ''}" data-subtab="${s.id}">${escapeHtml(s.name)}</button>`).join('')}
+      <button class="subtab-btn subtab-add" id="btn-add-savings" title="${t('add_savings_btn')}">+</button>
+    </div>
+  `;
+
+  const contentHtml = selected === 'current'
+    ? renderBankSubtab(member, account)
+    : renderSavingsSubtab(savings.find((s) => s.id === selected));
+
+  return subtabsHtml + contentHtml;
+}
+
+function renderBankSubtab(member, account) {
+  const balance = accountBalance(account);
   return `
     <div class="card balance-card">
       <div class="label">${t('member_current_prefix')}${escapeHtml(member.name)}</div>
@@ -271,20 +297,14 @@ function renderMemberTab(memberId) {
       <button class="btn btn-small" id="btn-add-tx">${t('add_transaction_btn')}</button>
     </div>
     <div id="member-tx-list">${renderTxList(account ? account.id : null)}</div>
-
-    <div class="section-title">
-      <h2>${t('section_savings')}</h2>
-      <button class="btn btn-small" id="btn-add-savings">${t('add_savings_btn')}</button>
-    </div>
-    <div class="savings-grid" id="savings-list">
-      ${savings.length ? savings.map((s) => renderSavingsCard(s)).join('') : `<div class="empty-hint">${t('empty_no_savings')}</div>`}
-    </div>
   `;
 }
 
-function renderSavingsCard(account) {
-  const cps = checkpointsSorted(account.id, 'desc');
+function renderSavingsSubtab(account) {
+  if (!account) return `<div class="empty-hint">${t('empty_account_not_found')}</div>`;
   const balance = accountBalance(account);
+  const cps = checkpointsSorted(account.id, 'desc');
+
   let deltaHtml = `<span class="tx-meta">${t('savings_no_checkpoints_yet')}</span>`;
   if (cps.length >= 2) {
     const delta = Number(cps[0].balance) - Number(cps[1].balance);
@@ -294,40 +314,103 @@ function renderSavingsCard(account) {
   } else if (cps.length === 1) {
     deltaHtml = `<span class="tx-meta">${t('savings_checkpoint_from')}${formatDate(cps[0].date)}</span>`;
   }
+
   return `
-    <div class="card savings-card" data-account-id="${account.id}">
-      <div class="savings-card-main">
-        <div class="label">${escapeHtml(account.name)}</div>
-        <div class="amount money-value">${formatMoney(balance)}</div>
-        <div class="savings-delta">${deltaHtml}</div>
+    <div class="card balance-card savings-header-card">
+      <div class="savings-header-top">
+        <div>
+          <div class="label">${escapeHtml(account.name)}</div>
+          <div class="amount money-value">${formatMoney(balance)}</div>
+          <div class="savings-delta">${deltaHtml}</div>
+        </div>
+        <div class="tx-actions">
+          <button class="icon-btn" id="btn-rename-savings" title="${t('edit_title')}">✏️</button>
+          <button class="icon-btn" id="btn-delete-savings" title="${t('delete_title')}">🗑️</button>
+        </div>
       </div>
-      <div class="tx-actions">
-        <button class="icon-btn sav-rename" title="${t('edit_title')}">✏️</button>
-        <button class="icon-btn sav-delete" title="${t('delete_title')}">🗑️</button>
-      </div>
-    </div>`;
+    </div>
+
+    <div class="section-title">
+      <h2>${t('section_checkpoints')}</h2>
+      <button class="btn btn-small" id="btn-add-checkpoint">${t('add_checkpoint_btn')}</button>
+    </div>
+    <div id="checkpoint-list">${renderCheckpointRows(cps)}</div>
+  `;
+}
+
+function renderCheckpointRows(cps) {
+  if (!cps.length) return `<div class="empty-hint">${t('empty_no_checkpoints')}</div>`;
+  return cps.map((c, idx) => {
+    let deltaHtml = `<span class="tx-meta">${t('checkpoint_start')}</span>`;
+    if (idx < cps.length - 1) {
+      const delta = Number(c.balance) - Number(cps[idx + 1].balance);
+      const cls = delta >= 0 ? 'income' : 'expense';
+      const sign = delta >= 0 ? '+' : '−';
+      deltaHtml = `<span class="tx-amount money-value ${cls}">${sign} ${formatMoney(Math.abs(delta))}</span>`;
+    }
+    return `
+      <div class="tx-card" data-cp-id="${c.id}">
+        <div class="tx-info">
+          <span class="tx-category money-value">${formatMoney(c.balance)}</span>
+          <span class="tx-meta">${formatDate(c.date)}${c.comment ? ' · ' + escapeHtml(c.comment) : ''}</span>
+        </div>
+        ${deltaHtml}
+        <div class="tx-actions">
+          <button class="icon-btn cp-edit" title="${t('edit_title')}">✏️</button>
+          <button class="icon-btn cp-delete" title="${t('delete_title')}">🗑️</button>
+        </div>
+      </div>`;
+  }).join('');
 }
 
 function attachMemberEvents(memberId) {
   const account = currentAccountOf(memberId);
-  if (account) {
-    document.getElementById('btn-add-tx').addEventListener('click', () => openTransactionModal({ accountId: account.id }));
-    attachTxListEvents(document.getElementById('member-tx-list'), account.id);
+  const savings = savingsAccountsOf(memberId);
+  const selected = memberSubTab[memberId] || 'current';
+
+  document.querySelectorAll('#member-subtabs .subtab-btn[data-subtab]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      memberSubTab[memberId] = btn.dataset.subtab;
+      renderCurrentTab();
+    });
+  });
+
+  document.getElementById('btn-add-savings').addEventListener('click', (e) => {
+    e.stopPropagation();
+    openNewSavingsModal({ memberId });
+  });
+
+  if (selected === 'current') {
+    if (account) {
+      document.getElementById('btn-add-tx').addEventListener('click', () => openTransactionModal({ accountId: account.id }));
+      attachTxListEvents(document.getElementById('member-tx-list'), account.id);
+    }
+    return;
   }
 
-  document.getElementById('btn-add-savings').addEventListener('click', () => openNewSavingsModal({ memberId }));
+  const savAccount = savings.find((s) => s.id === selected);
+  if (!savAccount) return;
 
-  document.querySelectorAll('#savings-list .savings-card').forEach((card) => {
-    const accId = card.dataset.accountId;
-    card.querySelector('.savings-card-main').addEventListener('click', () => openSavingsHistoryModal(accId));
-    card.querySelector('.sav-rename').addEventListener('click', (e) => {
-      e.stopPropagation();
-      openRenameSavingsModal(accId);
+  document.getElementById('btn-rename-savings').addEventListener('click', () => openRenameSavingsModal(savAccount.id));
+  document.getElementById('btn-delete-savings').addEventListener('click', async () => {
+    if (!confirm(t('confirm_delete_savings'))) return;
+    memberSubTab[memberId] = 'current';
+    await Api.deleteAccount(savAccount.id);
+    await loadAll();
+  });
+  document.getElementById('btn-add-checkpoint').addEventListener('click', () => {
+    openCheckpointModal({ accountId: savAccount.id });
+  });
+
+  document.querySelectorAll('#checkpoint-list .tx-card').forEach((row) => {
+    const cpId = row.dataset.cpId;
+    row.querySelector('.cp-edit').addEventListener('click', () => {
+      const cp = state.checkpoints.find((x) => x.id === cpId);
+      openCheckpointModal({ accountId: savAccount.id, checkpoint: cp });
     });
-    card.querySelector('.sav-delete').addEventListener('click', async (e) => {
-      e.stopPropagation();
-      if (!confirm(t('confirm_delete_savings'))) return;
-      await Api.deleteAccount(accId);
+    row.querySelector('.cp-delete').addEventListener('click', async () => {
+      if (!confirm(t('confirm_delete_checkpoint'))) return;
+      await Api.deleteCheckpoint(cpId);
       await loadAll();
     });
   });
@@ -557,66 +640,9 @@ function openRenameSavingsModal(accountId) {
   });
 }
 
-// История чекапов конкретной копилки: список + добавление/редактирование/удаление
-function openSavingsHistoryModal(accountId) {
-  function render() {
-    const account = state.accounts.find((a) => a.id === accountId);
-    if (!account) { closeModal(); return; }
-    const cps = checkpointsSorted(accountId, 'desc');
-
-    const rowsHtml = cps.length ? cps.map((c, idx) => {
-      let deltaHtml = `<span class="tx-meta">${t('checkpoint_start')}</span>`;
-      if (idx < cps.length - 1) {
-        const delta = Number(c.balance) - Number(cps[idx + 1].balance);
-        const cls = delta >= 0 ? 'income' : 'expense';
-        const sign = delta >= 0 ? '+' : '−';
-        deltaHtml = `<span class="tx-amount money-value ${cls}">${sign} ${formatMoney(Math.abs(delta))}</span>`;
-      }
-      return `
-        <div class="tx-card" data-cp-id="${c.id}">
-          <div class="tx-info">
-            <span class="tx-category money-value">${formatMoney(c.balance)}</span>
-            <span class="tx-meta">${formatDate(c.date)}${c.comment ? ' · ' + escapeHtml(c.comment) : ''}</span>
-          </div>
-          ${deltaHtml}
-          <div class="tx-actions">
-            <button class="icon-btn cp-edit" title="${t('edit_title')}">✏️</button>
-            <button class="icon-btn cp-delete" title="${t('delete_title')}">🗑️</button>
-          </div>
-        </div>`;
-    }).join('') : `<div class="empty-hint">${t('empty_no_checkpoints')}</div>`;
-
-    openModal(`
-      <h3>${escapeHtml(account.name)}</h3>
-      <div class="modal-actions" style="margin-top:0;margin-bottom:16px;">
-        <button class="btn btn-ghost btn-small" id="cp-close">${t('btn_close')}</button>
-        <button class="btn btn-small" id="cp-add">${t('add_checkpoint_btn')}</button>
-      </div>
-      <div id="cp-list">${rowsHtml}</div>
-    `);
-
-    document.getElementById('cp-close').addEventListener('click', closeModal);
-    document.getElementById('cp-add').addEventListener('click', () => openCheckpointModal({ accountId, onDone: render }));
-
-    document.querySelectorAll('#cp-list .tx-card').forEach((row) => {
-      const cpId = row.dataset.cpId;
-      row.querySelector('.cp-edit').addEventListener('click', () => {
-        const cp = state.checkpoints.find((x) => x.id === cpId);
-        openCheckpointModal({ accountId, checkpoint: cp, onDone: render });
-      });
-      row.querySelector('.cp-delete').addEventListener('click', async () => {
-        if (!confirm(t('confirm_delete_checkpoint'))) return;
-        await Api.deleteCheckpoint(cpId);
-        await loadAll();
-        render();
-      });
-    });
-  }
-
-  render();
-}
-
-function openCheckpointModal({ accountId, checkpoint, onDone }) {
+// Модалка добавления/редактирования одного чекапа. Список чекапов
+// живёт прямо на странице копилки и обновляется через общий loadAll().
+function openCheckpointModal({ accountId, checkpoint }) {
   const isEdit = !!checkpoint;
   openModal(`
     <h3>${isEdit ? t('checkpoint_edit_title') : t('checkpoint_new_title')}</h3>
@@ -638,10 +664,7 @@ function openCheckpointModal({ accountId, checkpoint, onDone }) {
     </div>
   `);
 
-  document.getElementById('cp-cancel').addEventListener('click', () => {
-    closeModal();
-    if (onDone) onDone();
-  });
+  document.getElementById('cp-cancel').addEventListener('click', closeModal);
 
   document.getElementById('cp-save').addEventListener('click', async () => {
     const date = document.getElementById('cp-date').value;
@@ -657,8 +680,8 @@ function openCheckpointModal({ accountId, checkpoint, onDone }) {
       } else {
         await Api.addCheckpoint({ account_id: accountId, date, balance, comment });
       }
+      closeModal();
       await loadAll();
-      if (onDone) onDone(); else closeModal();
     } catch (err) {
       alert(t('err_checkpoint_save_failed') + err.message);
     }

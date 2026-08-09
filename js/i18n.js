@@ -12,13 +12,15 @@ const RTL_LANGS = ['he'];
 
 const I18N = {
   ru: {
-    app_title: 'Семейный бюджет',
+    app_title: 'Urvan Finance',
     categories_btn: 'Категории',
     privacy_hide_title: 'Скрыть суммы',
     privacy_show_title: 'Показать суммы',
     lang_btn_title: 'Язык',
     lang_picker_title: 'Выберите язык',
     tab_overview: 'Общий статус',
+    subtab_bank: 'Банк счёт',
+    section_checkpoints: 'История',
 
     overview_current_suffix: ' — текущий счёт',
     overview_cash_label: 'Общая наличность',
@@ -107,13 +109,15 @@ const I18N = {
   },
 
   uk: {
-    app_title: 'Сімейний бюджет',
+    app_title: 'Urvan Finance',
     categories_btn: 'Категорії',
     privacy_hide_title: 'Приховати суми',
     privacy_show_title: 'Показати суми',
     lang_btn_title: 'Мова',
     lang_picker_title: 'Оберіть мову',
     tab_overview: 'Загальний стан',
+    subtab_bank: 'Банківський рахунок',
+    section_checkpoints: 'Історія',
 
     overview_current_suffix: ' — поточний рахунок',
     overview_cash_label: 'Загальна готівка',
@@ -202,13 +206,15 @@ const I18N = {
   },
 
   he: {
-    app_title: 'תקציב משפחתי',
+    app_title: 'Urvan Finance',
     categories_btn: 'קטגוריות',
     privacy_hide_title: 'הסתר סכומים',
     privacy_show_title: 'הצג סכומים',
     lang_btn_title: 'שפה',
     lang_picker_title: 'בחר שפה',
     tab_overview: 'מצב כללי',
+    subtab_bank: 'חשבון בנק',
+    section_checkpoints: 'היסטוריה',
 
     overview_current_suffix: ' — חשבון עו״ש',
     overview_cash_label: 'מזומן משותף',
@@ -297,13 +303,15 @@ const I18N = {
   },
 
   en: {
-    app_title: 'Family Budget',
+    app_title: 'Urvan Finance',
     categories_btn: 'Categories',
     privacy_hide_title: 'Hide amounts',
     privacy_show_title: 'Show amounts',
     lang_btn_title: 'Language',
     lang_picker_title: 'Choose a language',
     tab_overview: 'Overview',
+    subtab_bank: 'Bank account',
+    section_checkpoints: 'History',
 
     overview_current_suffix: ' — current account',
     overview_cash_label: 'Shared cash',
