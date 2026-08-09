@@ -5,6 +5,7 @@
 
 let state = { members: [], categories: [], accounts: [], transactions: [], checkpoints: [] };
 let currentTab = 'overview';
+let privacyMode = false;
 
 // ---------------------------------------------------------------
 // Загрузка данных
@@ -32,19 +33,13 @@ async function loadAll() {
 }
 
 function showSetupNeeded() {
-  document.getElementById('app').innerHTML = `
-    <div class="error-banner">
-      Нужно указать данные подключения к Supabase.<br>
-      Откройте файл <code>js/config.js</code> и впишите туда ваш <b>Project URL</b> и <b>anon public key</b>
-      (в Supabase: Project Settings → API), затем обновите страницу.
-    </div>`;
+  document.getElementById('app').innerHTML = `<div class="error-banner">${t('setup_needed_html')}</div>`;
 }
 
 function showLoadError(err) {
   document.getElementById('app').innerHTML = `
     <div class="error-banner">
-      Не удалось загрузить данные из Supabase.<br>
-      Проверьте <code>js/config.js</code> и что в Supabase выполнены скрипты <code>sql/schema.sql</code> и <code>sql/migration_2_checkpoints.sql</code>.<br>
+      ${t('load_error_html')}
       <small>${escapeHtml(err.message || String(err))}</small>
     </div>`;
 }
@@ -107,6 +102,56 @@ function cashAccount() {
 }
 
 // ---------------------------------------------------------------
+// Приватность: скрыть/показать суммы одной кнопкой
+// ---------------------------------------------------------------
+
+function applyPrivacyButton() {
+  const btn = document.getElementById('btn-privacy');
+  btn.textContent = privacyMode ? '🙈' : '👁️';
+  btn.title = privacyMode ? t('privacy_show_title') : t('privacy_hide_title');
+}
+
+function togglePrivacy() {
+  privacyMode = !privacyMode;
+  document.body.classList.toggle('privacy-mode', privacyMode);
+  applyPrivacyButton();
+}
+
+// ---------------------------------------------------------------
+// Язык интерфейса
+// ---------------------------------------------------------------
+
+function applyStaticText() {
+  document.title = t('app_title');
+  document.getElementById('app-title-text').textContent = t('app_title');
+  document.getElementById('btn-categories').textContent = t('categories_btn');
+  document.getElementById('btn-lang').title = t('lang_btn_title');
+  applyPrivacyButton();
+}
+
+function openLanguageModal() {
+  const current = getLang();
+  const optionsHtml = LANGUAGES.map((l) => `
+    <button type="button" class="lang-option ${l.code === current ? 'active' : ''}" data-code="${l.code}">${escapeHtml(l.label)}</button>
+  `).join('');
+
+  openModal(`
+    <h3>${t('lang_picker_title')}</h3>
+    <div class="lang-option-list">${optionsHtml}</div>
+  `);
+
+  document.querySelectorAll('.lang-option').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      setLang(btn.dataset.code);
+      closeModal();
+      applyStaticText();
+      renderTabs();
+      renderCurrentTab();
+    });
+  });
+}
+
+// ---------------------------------------------------------------
 // Вкладки
 // ---------------------------------------------------------------
 
@@ -120,7 +165,7 @@ function avatarColor(name) {
 function renderTabs() {
   const nav = document.getElementById('tabs');
   nav.innerHTML = '';
-  nav.appendChild(makeTabButton('overview', 'Общий статус', '<span class="tab-icon">🏠</span>'));
+  nav.appendChild(makeTabButton('overview', t('tab_overview'), '<span class="tab-icon">🏠</span>'));
   state.members.forEach((m) => {
     const avatar = `<span class="tab-avatar" style="background:${avatarColor(m.name)}">${escapeHtml(m.name.charAt(0).toUpperCase())}</span>`;
     nav.appendChild(makeTabButton('member:' + m.id, m.name, avatar));
@@ -165,28 +210,32 @@ function renderOverview() {
     .filter((a) => a.type === 'savings')
     .reduce((sum, a) => sum + accountBalance(a), 0);
   const cashBalance = accountBalance(cash);
-  const grandTotal = memberBalances.reduce((s, x) => s + x.balance, 0) + savingsTotal + cashBalance;
+  const liquidTotal = memberBalances.reduce((s, x) => s + x.balance, 0) + cashBalance;
 
   return `
     <div class="summary-grid">
       ${memberBalances.map((x) => `
         <div class="card balance-card">
-          <div class="label">${escapeHtml(x.member.name)} — текущий счёт</div>
-          <div class="amount">${formatMoney(x.balance)}</div>
+          <div class="label">${escapeHtml(x.member.name)}${t('overview_current_suffix')}</div>
+          <div class="amount money-value">${formatMoney(x.balance)}</div>
         </div>`).join('')}
       <div class="card balance-card">
-        <div class="label">Общая наличность</div>
-        <div class="amount">${formatMoney(cashBalance)}</div>
+        <div class="label">${t('overview_cash_label')}</div>
+        <div class="amount money-value">${formatMoney(cashBalance)}</div>
       </div>
       <div class="card balance-card total">
-        <div class="label">Итого по семье (счета + наличность + копилки)</div>
-        <div class="amount">${formatMoney(grandTotal)}</div>
+        <div class="label">${t('overview_liquid_total')}</div>
+        <div class="amount money-value">${formatMoney(liquidTotal)}</div>
+      </div>
+      <div class="card balance-card">
+        <div class="label">${t('overview_savings_total')}</div>
+        <div class="amount money-value">${formatMoney(savingsTotal)}</div>
       </div>
     </div>
 
     <div class="section-title">
-      <h2>Операции по общей наличности</h2>
-      <button class="btn btn-small" id="btn-add-cash-tx">+ Добавить операцию</button>
+      <h2>${t('overview_cash_ops_title')}</h2>
+      <button class="btn btn-small" id="btn-add-cash-tx">${t('add_transaction_btn')}</button>
     </div>
     <div id="cash-tx-list">${renderTxList(cash ? cash.id : null)}</div>
   `;
@@ -205,7 +254,7 @@ function attachOverviewEvents() {
 
 function renderMemberTab(memberId) {
   const member = state.members.find((m) => m.id === memberId);
-  if (!member) return '<div class="empty-hint">Член семьи не найден.</div>';
+  if (!member) return `<div class="empty-hint">${t('empty_member_not_found')}</div>`;
 
   const account = currentAccountOf(memberId);
   const savings = savingsAccountsOf(memberId);
@@ -213,22 +262,22 @@ function renderMemberTab(memberId) {
 
   return `
     <div class="card balance-card">
-      <div class="label">Текущий счёт — ${escapeHtml(member.name)}</div>
-      <div class="amount">${formatMoney(balance)}</div>
+      <div class="label">${t('member_current_prefix')}${escapeHtml(member.name)}</div>
+      <div class="amount money-value">${formatMoney(balance)}</div>
     </div>
 
     <div class="section-title">
-      <h2>Операции</h2>
-      <button class="btn btn-small" id="btn-add-tx">+ Добавить операцию</button>
+      <h2>${t('section_operations')}</h2>
+      <button class="btn btn-small" id="btn-add-tx">${t('add_transaction_btn')}</button>
     </div>
     <div id="member-tx-list">${renderTxList(account ? account.id : null)}</div>
 
     <div class="section-title">
-      <h2>Копилки</h2>
-      <button class="btn btn-small" id="btn-add-savings">+ Добавить копилку</button>
+      <h2>${t('section_savings')}</h2>
+      <button class="btn btn-small" id="btn-add-savings">${t('add_savings_btn')}</button>
     </div>
     <div class="savings-grid" id="savings-list">
-      ${savings.length ? savings.map((s) => renderSavingsCard(s)).join('') : '<div class="empty-hint">Пока нет копилок.</div>'}
+      ${savings.length ? savings.map((s) => renderSavingsCard(s)).join('') : `<div class="empty-hint">${t('empty_no_savings')}</div>`}
     </div>
   `;
 }
@@ -236,25 +285,25 @@ function renderMemberTab(memberId) {
 function renderSavingsCard(account) {
   const cps = checkpointsSorted(account.id, 'desc');
   const balance = accountBalance(account);
-  let deltaHtml = '<span class="tx-meta">Пока нет чекапов</span>';
+  let deltaHtml = `<span class="tx-meta">${t('savings_no_checkpoints_yet')}</span>`;
   if (cps.length >= 2) {
     const delta = Number(cps[0].balance) - Number(cps[1].balance);
     const cls = delta >= 0 ? 'income' : 'expense';
     const sign = delta >= 0 ? '+' : '−';
-    deltaHtml = `<span class="tx-amount ${cls}">${sign} ${formatMoney(Math.abs(delta))}</span> <span class="tx-meta">с ${formatDate(cps[1].date)}</span>`;
+    deltaHtml = `<span class="tx-amount money-value ${cls}">${sign} ${formatMoney(Math.abs(delta))}</span> <span class="tx-meta">${t('savings_since')}${formatDate(cps[1].date)}</span>`;
   } else if (cps.length === 1) {
-    deltaHtml = `<span class="tx-meta">чекап от ${formatDate(cps[0].date)}</span>`;
+    deltaHtml = `<span class="tx-meta">${t('savings_checkpoint_from')}${formatDate(cps[0].date)}</span>`;
   }
   return `
     <div class="card savings-card" data-account-id="${account.id}">
       <div class="savings-card-main">
         <div class="label">${escapeHtml(account.name)}</div>
-        <div class="amount">${formatMoney(balance)}</div>
+        <div class="amount money-value">${formatMoney(balance)}</div>
         <div class="savings-delta">${deltaHtml}</div>
       </div>
       <div class="tx-actions">
-        <button class="icon-btn sav-rename" title="Переименовать">✏️</button>
-        <button class="icon-btn sav-delete" title="Удалить">🗑️</button>
+        <button class="icon-btn sav-rename" title="${t('edit_title')}">✏️</button>
+        <button class="icon-btn sav-delete" title="${t('delete_title')}">🗑️</button>
       </div>
     </div>`;
 }
@@ -277,7 +326,7 @@ function attachMemberEvents(memberId) {
     });
     card.querySelector('.sav-delete').addEventListener('click', async (e) => {
       e.stopPropagation();
-      if (!confirm('Удалить копилку? Вся история чекапов тоже удалится.')) return;
+      if (!confirm(t('confirm_delete_savings'))) return;
       await Api.deleteAccount(accId);
       await loadAll();
     });
@@ -289,27 +338,27 @@ function attachMemberEvents(memberId) {
 // ---------------------------------------------------------------
 
 function renderTxList(accountId) {
-  if (!accountId) return '<div class="empty-hint">Счёт не найден.</div>';
+  if (!accountId) return `<div class="empty-hint">${t('empty_account_not_found')}</div>`;
   const txs = state.transactions
     .filter((t) => t.account_id === accountId)
     .sort((a, b) => b.date.localeCompare(a.date) || b.created_at.localeCompare(a.created_at));
 
-  if (txs.length === 0) return '<div class="empty-hint">Пока нет операций.</div>';
+  if (txs.length === 0) return `<div class="empty-hint">${t('empty_no_transactions')}</div>`;
 
-  return txs.map((t) => {
-    const cat = state.categories.find((c) => c.id === t.category_id);
-    const catName = cat ? cat.name : '(без категории)';
-    const sign = t.type === 'income' ? '+' : '−';
+  return txs.map((tx) => {
+    const cat = state.categories.find((c) => c.id === tx.category_id);
+    const catName = cat ? cat.name : t('no_category_label');
+    const sign = tx.type === 'income' ? '+' : '−';
     return `
-      <div class="tx-card" data-tx-id="${t.id}">
+      <div class="tx-card" data-tx-id="${tx.id}">
         <div class="tx-info">
           <span class="tx-category">${escapeHtml(catName)}</span>
-          <span class="tx-meta">${formatDate(t.date)}${t.comment ? ' · ' + escapeHtml(t.comment) : ''}</span>
+          <span class="tx-meta">${formatDate(tx.date)}${tx.comment ? ' · ' + escapeHtml(tx.comment) : ''}</span>
         </div>
-        <div class="tx-amount ${t.type}">${sign} ${formatMoney(t.amount)}</div>
+        <div class="tx-amount money-value ${tx.type}">${sign} ${formatMoney(tx.amount)}</div>
         <div class="tx-actions">
-          <button class="icon-btn tx-edit" title="Редактировать">✏️</button>
-          <button class="icon-btn tx-delete" title="Удалить">🗑️</button>
+          <button class="icon-btn tx-edit" title="${t('edit_title')}">✏️</button>
+          <button class="icon-btn tx-delete" title="${t('delete_title')}">🗑️</button>
         </div>
       </div>`;
   }).join('');
@@ -324,7 +373,7 @@ function attachTxListEvents(container, accountId) {
       openTransactionModal({ accountId, transaction: tx });
     });
     card.querySelector('.tx-delete').addEventListener('click', async () => {
-      if (!confirm('Удалить операцию?')) return;
+      if (!confirm(t('confirm_delete_transaction'))) return;
       await Api.deleteTransaction(txId);
       await loadAll();
     });
@@ -358,42 +407,42 @@ function openTransactionModal({ accountId, transaction }) {
   const isEdit = !!transaction;
   let type = transaction ? transaction.type : 'expense';
 
-  const categoryOptions = (t) => {
+  const categoryOptions = (ty) => {
     const options = state.categories
-      .filter((c) => c.type === t)
+      .filter((c) => c.type === ty)
       .map((c) => `<option value="${c.id}" ${transaction && transaction.category_id === c.id ? 'selected' : ''}>${escapeHtml(c.name)}</option>`)
       .join('');
-    return `<option value="">— без категории —</option>${options}`;
+    return `<option value="">${t('no_category_option')}</option>${options}`;
   };
 
   openModal(`
-    <h3>${isEdit ? 'Редактировать операцию' : 'Новая операция'}</h3>
+    <h3>${isEdit ? t('tx_modal_edit_title') : t('tx_modal_new_title')}</h3>
     <div class="form-row">
-      <label>Тип операции</label>
+      <label>${t('field_type')}</label>
       <div class="type-toggle" id="tx-type-toggle">
-        <button type="button" data-type="expense" class="${type === 'expense' ? 'active' : ''}">Расход</button>
-        <button type="button" data-type="income" class="${type === 'income' ? 'active' : ''}">Доход</button>
+        <button type="button" data-type="expense" class="${type === 'expense' ? 'active' : ''}">${t('type_expense')}</button>
+        <button type="button" data-type="income" class="${type === 'income' ? 'active' : ''}">${t('type_income')}</button>
       </div>
     </div>
     <div class="form-row">
-      <label>Категория</label>
+      <label>${t('field_category')}</label>
       <select id="tx-category">${categoryOptions(type)}</select>
     </div>
     <div class="form-row">
-      <label>Сумма, ₪</label>
+      <label>${t('field_amount')}</label>
       <input type="number" id="tx-amount" min="0" step="0.01" value="${transaction ? transaction.amount : ''}" />
     </div>
     <div class="form-row">
-      <label>Дата</label>
+      <label>${t('field_date')}</label>
       <input type="date" id="tx-date" value="${transaction ? transaction.date : todayStr()}" />
     </div>
     <div class="form-row">
-      <label>Комментарий</label>
+      <label>${t('field_comment')}</label>
       <input type="text" id="tx-comment" value="${transaction && transaction.comment ? escapeHtml(transaction.comment) : ''}" />
     </div>
     <div class="modal-actions">
-      <button class="btn btn-ghost" id="tx-cancel">Отмена</button>
-      <button class="btn" id="tx-save">Сохранить</button>
+      <button class="btn btn-ghost" id="tx-cancel">${t('btn_cancel')}</button>
+      <button class="btn" id="tx-save">${t('btn_save')}</button>
     </div>
   `);
 
@@ -413,8 +462,8 @@ function openTransactionModal({ accountId, transaction }) {
     const category_id = document.getElementById('tx-category').value || null;
     const comment = document.getElementById('tx-comment').value.trim();
 
-    if (!amount || amount <= 0) { alert('Введите сумму больше нуля.'); return; }
-    if (!date) { alert('Укажите дату.'); return; }
+    if (!amount || amount <= 0) { alert(t('err_amount_positive')); return; }
+    if (!date) { alert(t('err_date_required')); return; }
 
     try {
       if (isEdit) {
@@ -425,7 +474,7 @@ function openTransactionModal({ accountId, transaction }) {
       closeModal();
       await loadAll();
     } catch (err) {
-      alert('Не удалось сохранить операцию: ' + err.message);
+      alert(t('err_tx_save_failed') + err.message);
     }
   });
 }
@@ -434,26 +483,26 @@ function openTransactionModal({ accountId, transaction }) {
 
 function openNewSavingsModal({ memberId }) {
   openModal(`
-    <h3>Новая копилка</h3>
+    <h3>${t('savings_new_title')}</h3>
     <div class="form-row">
-      <label>Название</label>
-      <input type="text" id="new-sav-name" placeholder="Например, Пенсия" />
+      <label>${t('field_name')}</label>
+      <input type="text" id="new-sav-name" placeholder="${t('name_placeholder_example')}" />
     </div>
     <div class="form-row">
-      <label>Текущая сумма, ₪</label>
+      <label>${t('field_current_amount')}</label>
       <input type="number" id="new-sav-balance" step="0.01" />
     </div>
     <div class="form-row">
-      <label>Дата</label>
+      <label>${t('field_date')}</label>
       <input type="date" id="new-sav-date" value="${todayStr()}" />
     </div>
     <div class="form-row">
-      <label>Комментарий (необязательно)</label>
+      <label>${t('field_comment_optional')}</label>
       <input type="text" id="new-sav-comment" />
     </div>
     <div class="modal-actions">
-      <button class="btn btn-ghost" id="new-sav-cancel">Отмена</button>
-      <button class="btn" id="new-sav-save">Создать</button>
+      <button class="btn btn-ghost" id="new-sav-cancel">${t('btn_cancel')}</button>
+      <button class="btn" id="new-sav-save">${t('btn_create')}</button>
     </div>
   `);
 
@@ -464,9 +513,9 @@ function openNewSavingsModal({ memberId }) {
     const date = document.getElementById('new-sav-date').value;
     const comment = document.getElementById('new-sav-comment').value.trim();
 
-    if (!name) { alert('Введите название копилки.'); return; }
-    if (isNaN(balance)) { alert('Введите текущую сумму.'); return; }
-    if (!date) { alert('Укажите дату.'); return; }
+    if (!name) { alert(t('err_savings_name_required')); return; }
+    if (isNaN(balance)) { alert(t('err_amount_required')); return; }
+    if (!date) { alert(t('err_date_required')); return; }
 
     try {
       const account = await Api.addAccount({ member_id: memberId, type: 'savings', name, initial_balance: 0 });
@@ -474,7 +523,7 @@ function openNewSavingsModal({ memberId }) {
       closeModal();
       await loadAll();
     } catch (err) {
-      alert('Не удалось создать копилку: ' + err.message);
+      alert(t('err_savings_create_failed') + err.message);
     }
   });
 }
@@ -483,27 +532,27 @@ function openRenameSavingsModal(accountId) {
   const account = state.accounts.find((a) => a.id === accountId);
   if (!account) return;
   openModal(`
-    <h3>Переименовать копилку</h3>
+    <h3>${t('savings_rename_title')}</h3>
     <div class="form-row">
-      <label>Название</label>
+      <label>${t('field_name')}</label>
       <input type="text" id="rename-input" value="${escapeHtml(account.name)}" />
     </div>
     <div class="modal-actions">
-      <button class="btn btn-ghost" id="rename-cancel">Отмена</button>
-      <button class="btn" id="rename-save">Сохранить</button>
+      <button class="btn btn-ghost" id="rename-cancel">${t('btn_cancel')}</button>
+      <button class="btn" id="rename-save">${t('btn_save')}</button>
     </div>
   `);
 
   document.getElementById('rename-cancel').addEventListener('click', closeModal);
   document.getElementById('rename-save').addEventListener('click', async () => {
     const name = document.getElementById('rename-input').value.trim();
-    if (!name) { alert('Название не может быть пустым.'); return; }
+    if (!name) { alert(t('err_name_empty')); return; }
     try {
       await Api.updateAccount(accountId, { name });
       closeModal();
       await loadAll();
     } catch (err) {
-      alert('Не удалось переименовать копилку: ' + err.message);
+      alert(t('err_savings_rename_failed') + err.message);
     }
   });
 }
@@ -516,32 +565,32 @@ function openSavingsHistoryModal(accountId) {
     const cps = checkpointsSorted(accountId, 'desc');
 
     const rowsHtml = cps.length ? cps.map((c, idx) => {
-      let deltaHtml = '<span class="tx-meta">начало отсчёта</span>';
+      let deltaHtml = `<span class="tx-meta">${t('checkpoint_start')}</span>`;
       if (idx < cps.length - 1) {
         const delta = Number(c.balance) - Number(cps[idx + 1].balance);
         const cls = delta >= 0 ? 'income' : 'expense';
         const sign = delta >= 0 ? '+' : '−';
-        deltaHtml = `<span class="tx-amount ${cls}">${sign} ${formatMoney(Math.abs(delta))}</span>`;
+        deltaHtml = `<span class="tx-amount money-value ${cls}">${sign} ${formatMoney(Math.abs(delta))}</span>`;
       }
       return `
         <div class="tx-card" data-cp-id="${c.id}">
           <div class="tx-info">
-            <span class="tx-category">${formatMoney(c.balance)}</span>
+            <span class="tx-category money-value">${formatMoney(c.balance)}</span>
             <span class="tx-meta">${formatDate(c.date)}${c.comment ? ' · ' + escapeHtml(c.comment) : ''}</span>
           </div>
           ${deltaHtml}
           <div class="tx-actions">
-            <button class="icon-btn cp-edit" title="Редактировать">✏️</button>
-            <button class="icon-btn cp-delete" title="Удалить">🗑️</button>
+            <button class="icon-btn cp-edit" title="${t('edit_title')}">✏️</button>
+            <button class="icon-btn cp-delete" title="${t('delete_title')}">🗑️</button>
           </div>
         </div>`;
-    }).join('') : '<div class="empty-hint">Пока нет чекапов.</div>';
+    }).join('') : `<div class="empty-hint">${t('empty_no_checkpoints')}</div>`;
 
     openModal(`
       <h3>${escapeHtml(account.name)}</h3>
       <div class="modal-actions" style="margin-top:0;margin-bottom:16px;">
-        <button class="btn btn-ghost btn-small" id="cp-close">Закрыть</button>
-        <button class="btn btn-small" id="cp-add">+ Добавить чекап</button>
+        <button class="btn btn-ghost btn-small" id="cp-close">${t('btn_close')}</button>
+        <button class="btn btn-small" id="cp-add">${t('add_checkpoint_btn')}</button>
       </div>
       <div id="cp-list">${rowsHtml}</div>
     `);
@@ -556,7 +605,7 @@ function openSavingsHistoryModal(accountId) {
         openCheckpointModal({ accountId, checkpoint: cp, onDone: render });
       });
       row.querySelector('.cp-delete').addEventListener('click', async () => {
-        if (!confirm('Удалить этот чекап?')) return;
+        if (!confirm(t('confirm_delete_checkpoint'))) return;
         await Api.deleteCheckpoint(cpId);
         await loadAll();
         render();
@@ -570,22 +619,22 @@ function openSavingsHistoryModal(accountId) {
 function openCheckpointModal({ accountId, checkpoint, onDone }) {
   const isEdit = !!checkpoint;
   openModal(`
-    <h3>${isEdit ? 'Редактировать чекап' : 'Новый чекап'}</h3>
+    <h3>${isEdit ? t('checkpoint_edit_title') : t('checkpoint_new_title')}</h3>
     <div class="form-row">
-      <label>Дата</label>
+      <label>${t('field_date')}</label>
       <input type="date" id="cp-date" value="${checkpoint ? checkpoint.date : todayStr()}" />
     </div>
     <div class="form-row">
-      <label>Баланс, ₪</label>
+      <label>${t('field_balance')}</label>
       <input type="number" id="cp-balance" step="0.01" value="${checkpoint ? checkpoint.balance : ''}" />
     </div>
     <div class="form-row">
-      <label>Комментарий</label>
+      <label>${t('field_comment')}</label>
       <input type="text" id="cp-comment" value="${checkpoint && checkpoint.comment ? escapeHtml(checkpoint.comment) : ''}" />
     </div>
     <div class="modal-actions">
-      <button class="btn btn-ghost" id="cp-cancel">Отмена</button>
-      <button class="btn" id="cp-save">Сохранить</button>
+      <button class="btn btn-ghost" id="cp-cancel">${t('btn_cancel')}</button>
+      <button class="btn" id="cp-save">${t('btn_save')}</button>
     </div>
   `);
 
@@ -599,8 +648,8 @@ function openCheckpointModal({ accountId, checkpoint, onDone }) {
     const balance = parseFloat(document.getElementById('cp-balance').value);
     const comment = document.getElementById('cp-comment').value.trim();
 
-    if (!date) { alert('Укажите дату.'); return; }
-    if (isNaN(balance)) { alert('Введите сумму.'); return; }
+    if (!date) { alert(t('err_date_required')); return; }
+    if (isNaN(balance)) { alert(t('err_amount_required')); return; }
 
     try {
       if (isEdit) {
@@ -611,7 +660,7 @@ function openCheckpointModal({ accountId, checkpoint, onDone }) {
       await loadAll();
       if (onDone) onDone(); else closeModal();
     } catch (err) {
-      alert('Не удалось сохранить чекап: ' + err.message);
+      alert(t('err_checkpoint_save_failed') + err.message);
     }
   });
 }
@@ -625,32 +674,32 @@ function openCategoriesModal() {
     const rowsHtml = (list) => list.map((c) => `
       <div class="category-row" data-id="${c.id}">
         <input type="text" value="${escapeHtml(c.name)}" class="cat-name-input" />
-        <button class="icon-btn cat-save" title="Сохранить имя">💾</button>
-        <button class="icon-btn cat-delete" title="Удалить">🗑️</button>
-      </div>`).join('') || '<div class="empty-hint">Пока нет категорий.</div>';
+        <button class="icon-btn cat-save" title="${t('save_name_title')}">💾</button>
+        <button class="icon-btn cat-delete" title="${t('delete_title')}">🗑️</button>
+      </div>`).join('') || `<div class="empty-hint">${t('empty_no_categories')}</div>`;
 
     openModal(`
-      <h3>Категории</h3>
-      <div class="category-group-title">Доходы</div>
+      <h3>${t('categories_modal_title')}</h3>
+      <div class="category-group-title">${t('categories_income_group')}</div>
       <div id="cat-income-list">${rowsHtml(income)}</div>
-      <div class="category-group-title">Расходы</div>
+      <div class="category-group-title">${t('categories_expense_group')}</div>
       <div id="cat-expense-list">${rowsHtml(expense)}</div>
 
-      <div class="section-title"><h2>Добавить категорию</h2></div>
+      <div class="section-title"><h2>${t('add_category_title')}</h2></div>
       <div class="form-row">
-        <label>Название</label>
+        <label>${t('field_name')}</label>
         <input type="text" id="new-cat-name" />
       </div>
       <div class="form-row">
-        <label>Тип</label>
+        <label>${t('field_type_simple')}</label>
         <div class="type-toggle" id="new-cat-type-toggle">
-          <button type="button" data-type="expense" class="active">Расход</button>
-          <button type="button" data-type="income">Доход</button>
+          <button type="button" data-type="expense" class="active">${t('type_expense')}</button>
+          <button type="button" data-type="income">${t('type_income')}</button>
         </div>
       </div>
       <div class="modal-actions">
-        <button class="btn btn-ghost" id="cat-close">Закрыть</button>
-        <button class="btn" id="cat-add">Добавить</button>
+        <button class="btn btn-ghost" id="cat-close">${t('btn_close')}</button>
+        <button class="btn" id="cat-add">${t('btn_add')}</button>
       </div>
     `);
 
@@ -667,13 +716,13 @@ function openCategoriesModal() {
 
     document.getElementById('cat-add').addEventListener('click', async () => {
       const name = document.getElementById('new-cat-name').value.trim();
-      if (!name) { alert('Введите название категории.'); return; }
+      if (!name) { alert(t('err_category_name_required')); return; }
       try {
         await Api.addCategory(name, newType);
         await loadAll();
         render();
       } catch (err) {
-        alert('Не удалось добавить категорию: ' + err.message);
+        alert(t('err_category_add_failed') + err.message);
       }
     });
 
@@ -688,22 +737,22 @@ function openCategoriesModal() {
       const id = row.dataset.id;
       row.querySelector('.cat-save').addEventListener('click', async () => {
         const name = row.querySelector('.cat-name-input').value.trim();
-        if (!name) { alert('Название не может быть пустым.'); return; }
+        if (!name) { alert(t('err_name_empty')); return; }
         try {
           await Api.renameCategory(id, name);
           await loadAll();
         } catch (err) {
-          alert('Не удалось переименовать категорию: ' + err.message);
+          alert(t('err_category_rename_failed') + err.message);
         }
       });
       row.querySelector('.cat-delete').addEventListener('click', async () => {
-        if (!confirm('Удалить категорию? У операций с этой категорией она станет пустой.')) return;
+        if (!confirm(t('confirm_delete_category'))) return;
         try {
           await Api.deleteCategory(id);
           await loadAll();
           render();
         } catch (err) {
-          alert('Не удалось удалить категорию: ' + err.message);
+          alert(t('err_category_delete_failed') + err.message);
         }
       });
     });
@@ -719,7 +768,11 @@ function openCategoriesModal() {
 // Скрипт подключён в самом низу страницы, так что все элементы уже
 // существуют — можно сразу вешать обработчики и грузить данные,
 // не дожидаясь DOMContentLoaded (к этому моменту он мог уже случиться).
+setLang(getLang());
+applyStaticText();
 document.getElementById('btn-categories').addEventListener('click', openCategoriesModal);
+document.getElementById('btn-privacy').addEventListener('click', togglePrivacy);
+document.getElementById('btn-lang').addEventListener('click', openLanguageModal);
 loadAll();
 
 // Регистрируем service worker, чтобы приложение можно было "установить"

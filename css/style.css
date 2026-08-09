@@ -65,6 +65,25 @@ body {
   gap: 8px;
 }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.header-icon-btn {
+  font-size: 1.15rem;
+  padding: 6px 8px;
+}
+
+/* ---------- Приватность: скрыть суммы ---------- */
+
+body.privacy-mode .money-value {
+  filter: blur(7px);
+  user-select: none;
+}
+
 .app-header h1::before {
   content: "₪";
   display: inline-flex;
@@ -500,6 +519,29 @@ main#app {
   margin: 16px 0 6px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
+}
+
+.lang-option-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.lang-option {
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 1rem;
+  text-align: start;
+  cursor: pointer;
+}
+
+.lang-option.active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  font-weight: 600;
 }
 
 .error-banner {
