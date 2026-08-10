@@ -19,22 +19,25 @@
     <h1><span id="app-title-text">Urvan Finance</span></h1>
     <div class="header-actions">
       <button id="btn-privacy" class="icon-btn header-icon-btn" title="Скрыть суммы">👁️</button>
+      <button id="btn-theme" class="icon-btn header-icon-btn" title="Тема">🌓</button>
       <button id="btn-lang" class="icon-btn header-icon-btn" title="Язык">🌐</button>
-      <button id="btn-categories" class="btn btn-ghost">Категории</button>
     </div>
   </header>
 
   <nav class="tabs" id="tabs">
     <button class="tab-btn active" data-tab="overview">Общий статус</button>
-    <!-- Кнопки для членов семьи добавляются автоматически из JS -->
+    <!-- Кнопки для членов семьи и остальные вкладки добавляются автоматически из JS -->
   </nav>
 
   <main id="app"></main>
 
+  <button id="fab" class="fab" style="display:none;" title="+">+</button>
+
   <div id="modal-root"></div>
 
-  <!-- Библиотека supabase-js подключается с CDN, поэтому не нужно ничего устанавливать -->
+  <!-- Библиотеки подключаются с CDN, поэтому не нужно ничего устанавливать -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="js/config.js"></script>
   <script src="js/i18n.js"></script>
   <script src="js/supabaseClient.js"></script>

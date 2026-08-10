@@ -13,10 +13,25 @@
   --radius-sm: 10px;
   --shadow: 0 1px 2px rgba(20, 24, 40, 0.04), 0 4px 16px rgba(20, 24, 40, 0.06);
   --nav-height: 64px;
+
+  /* Категориальная палитра для графиков — фиксированный порядок, не менять местами */
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  --series-4: #eda100;
+  --series-5: #e87ba4;
+  --series-6: #008300;
+  --series-7: #4a3aa7;
+  --series-8: #e34948;
+  --chart-surface: #fcfcfb;
+  --chart-grid: #e1e0d9;
+  --chart-axis: #c3c2b7;
+  --chart-ink: #0b0b0b;
+  --chart-ink-muted: #898781;
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:where(:not([data-theme="light"])) {
     --bg: #14161c;
     --surface: #1d2029;
     --surface-2: #23262f;
@@ -28,7 +43,49 @@
     --income: #3ecb84;
     --expense: #ff6b62;
     --shadow: 0 1px 2px rgba(0, 0, 0, 0.2), 0 8px 24px rgba(0, 0, 0, 0.35);
+
+    --series-1: #3987e5;
+    --series-2: #d95926;
+    --series-3: #199e70;
+    --series-4: #c98500;
+    --series-5: #d55181;
+    --series-6: #008300;
+    --series-7: #9085e9;
+    --series-8: #e66767;
+    --chart-surface: #1a1a19;
+    --chart-grid: #2c2c2a;
+    --chart-axis: #383835;
+    --chart-ink: #ffffff;
+    --chart-ink-muted: #898781;
   }
+}
+
+:root[data-theme="dark"] {
+  --bg: #14161c;
+  --surface: #1d2029;
+  --surface-2: #23262f;
+  --text: #eef0f5;
+  --text-muted: #9aa0ac;
+  --border: #2c303b;
+  --accent: #6d93ff;
+  --accent-soft: #232b45;
+  --income: #3ecb84;
+  --expense: #ff6b62;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.2), 0 8px 24px rgba(0, 0, 0, 0.35);
+
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
+  --series-4: #c98500;
+  --series-5: #d55181;
+  --series-6: #008300;
+  --series-7: #9085e9;
+  --series-8: #e66767;
+  --chart-surface: #1a1a19;
+  --chart-grid: #2c2c2a;
+  --chart-axis: #383835;
+  --chart-ink: #ffffff;
+  --chart-ink-muted: #898781;
 }
 
 * {
@@ -598,4 +655,268 @@ main#app {
   border-radius: var(--radius);
   margin-bottom: 16px;
   line-height: 1.5;
+}
+
+/* ---------- Анимации карточек ---------- */
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.card, .tx-card {
+  animation: fadeInUp 0.22s ease both;
+}
+
+.fade-out {
+  animation: fadeOutCard 0.16s ease forwards;
+}
+
+@keyframes fadeOutCard {
+  to { opacity: 0; transform: scale(0.97); }
+}
+
+/* ---------- Плавающая кнопка добавления ---------- */
+
+.fab {
+  position: fixed;
+  right: 18px;
+  bottom: 22px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-size: 1.7rem;
+  line-height: 1;
+  border: none;
+  box-shadow: 0 6px 20px rgba(20, 24, 40, 0.25);
+  cursor: pointer;
+  z-index: 25;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fab:active {
+  transform: scale(0.95);
+}
+
+@media (max-width: 640px) {
+  .fab {
+    bottom: calc(var(--nav-height) + 14px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* ---------- Цветные акценты по членам семьи (Общий статус) ---------- */
+
+.balance-card.accent {
+  border-left-width: 4px;
+  border-left-style: solid;
+}
+
+/* ---------- Иконки категорий/копилок ---------- */
+
+.icon-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.icon-picker button {
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  font-size: 1.1rem;
+  cursor: pointer;
+}
+
+.icon-picker button.active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.item-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-inline-end: 4px;
+}
+
+/* ---------- Настройки ---------- */
+
+.settings-section {
+  margin-bottom: 28px;
+}
+
+.settings-section h2 {
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 0 0 12px;
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.settings-row:last-child {
+  border-bottom: none;
+}
+
+/* ---------- Фильтры операций ---------- */
+
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.filter-bar input,
+.filter-bar select {
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.85rem;
+  flex: 1 1 130px;
+  min-width: 0;
+}
+
+/* ---------- Месячная сводка ---------- */
+
+.summary-banner {
+  background: var(--accent-soft);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.summary-banner-close {
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 2px 6px;
+}
+
+/* ---------- Импорт из Excel ---------- */
+
+.import-table-wrap {
+  overflow: auto;
+  max-height: 320px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  margin: 12px 0;
+}
+
+.import-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+.import-table th,
+.import-table td {
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+  text-align: start;
+}
+
+.import-table th {
+  position: sticky;
+  top: 0;
+  background: var(--surface-2);
+}
+
+.dropzone {
+  border: 2px dashed var(--border);
+  border-radius: var(--radius);
+  padding: 28px 16px;
+  text-align: center;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.dropzone.dragover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+/* ---------- Графики ---------- */
+
+.chart-card {
+  overflow: visible;
+}
+
+.chart-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.chart-svg-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 12px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.chart-tooltip {
+  position: absolute;
+  pointer-events: none;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 0.78rem;
+  box-shadow: var(--shadow);
+  white-space: nowrap;
+  transform: translate(-50%, -110%);
+  z-index: 5;
+  display: none;
+}
+
+.chart-empty {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  padding: 24px 0;
+  text-align: center;
 }

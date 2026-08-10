@@ -19,6 +19,7 @@ create table if not exists categories (
   id uuid primary key default gen_random_uuid(),
   name text not null,
   type text not null check (type in ('income', 'expense')),
+  icon text,
   created_at timestamptz not null default now()
 );
 
@@ -28,6 +29,7 @@ create table if not exists accounts (
   member_id uuid references members(id) on delete cascade,
   type text not null check (type in ('current', 'savings', 'cash')),
   name text not null,
+  icon text,
   initial_balance numeric not null default 0,
   created_at timestamptz not null default now()
 );

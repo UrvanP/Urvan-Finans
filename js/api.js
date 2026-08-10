@@ -16,14 +16,14 @@ const Api = {
     return data;
   },
 
-  async addCategory(name, type) {
-    const { data, error } = await db.from('categories').insert({ name, type }).select().single();
+  async addCategory(name, type, icon) {
+    const { data, error } = await db.from('categories').insert({ name, type, icon: icon || null }).select().single();
     if (error) throw error;
     return data;
   },
 
-  async renameCategory(id, name) {
-    const { error } = await db.from('categories').update({ name }).eq('id', id);
+  async updateCategory(id, fields) {
+    const { error } = await db.from('categories').update(fields).eq('id', id);
     if (error) throw error;
   },
 
@@ -39,10 +39,10 @@ const Api = {
     return data;
   },
 
-  async addAccount({ member_id, type, name, initial_balance }) {
+  async addAccount({ member_id, type, name, initial_balance, icon }) {
     const { data, error } = await db
       .from('accounts')
-      .insert({ member_id, type, name, initial_balance: initial_balance || 0 })
+      .insert({ member_id, type, name, initial_balance: initial_balance || 0, icon: icon || null })
       .select()
       .single();
     if (error) throw error;
@@ -84,6 +84,13 @@ const Api = {
   async deleteTransaction(id) {
     const { error } = await db.from('transactions').delete().eq('id', id);
     if (error) throw error;
+  },
+
+  // Пакетная вставка (например, импорт выписки из Excel)
+  async addTransactionsBulk(rows) {
+    const { data, error } = await db.from('transactions').insert(rows).select();
+    if (error) throw error;
+    return data;
   },
 
   // ---------- checkpoints (история баланса копилок) ----------
