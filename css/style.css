@@ -920,3 +920,54 @@ main#app {
   padding: 24px 0;
   text-align: center;
 }
+
+/* ---------- Таблица "на что и сколько" ---------- */
+
+.expense-table {
+  margin-top: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.expense-row-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 5px;
+}
+
+.expense-row-label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.expense-row-amount {
+  font-weight: 700;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.expense-row-bar-track {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+.expense-row-bar {
+  height: 100%;
+  border-radius: 999px;
+}
+
+.expense-row-pct {
+  margin-top: 3px;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}

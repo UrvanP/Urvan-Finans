@@ -368,6 +368,7 @@ function renderOverview() {
     <div class="card chart-card">
       <div class="section-title" style="margin-top:0;"><h2>${t('analytics_pie_title')}</h2></div>
       <div id="overview-pie-chart"></div>
+      <div id="overview-expense-table"></div>
     </div>
 
     <div class="section-title">
@@ -391,6 +392,7 @@ function attachOverviewEvents() {
   attachPeriodControl();
   renderLiquidLineChart('overview-line-chart');
   drawPieChart('overview-pie-chart', state.transactions);
+  renderExpenseTable('overview-expense-table', state.transactions);
 
   const cash = cashAccount();
   if (!cash) return;
@@ -447,6 +449,7 @@ function renderBankSubtab(member, account) {
       <div class="card chart-card">
         <div class="section-title" style="margin-top:0;"><h2>${t('analytics_pie_title')}</h2></div>
         <div id="member-pie-chart"></div>
+        <div id="member-expense-table"></div>
       </div>
     ` : ''}
 
@@ -550,7 +553,9 @@ function attachMemberEvents(memberId) {
     if (account) {
       attachPeriodControl();
       renderAccountBalanceChart('member-line-chart', account);
-      drawPieChart('member-pie-chart', state.transactions.filter((tx) => tx.account_id === account.id));
+      const memberTxs = state.transactions.filter((tx) => tx.account_id === account.id);
+      drawPieChart('member-pie-chart', memberTxs);
+      renderExpenseTable('member-expense-table', memberTxs);
       document.getElementById('btn-add-tx').addEventListener('click', () => openTransactionModal({ accountId: account.id }));
       attachTxListEvents(account.id);
     }
@@ -1458,29 +1463,51 @@ function describeArc(cx, cy, r, startDeg, endDeg) {
   return ['M', cx, cy, 'L', start.x, start.y, 'A', r, r, 0, largeArc, 0, end.x, end.y, 'Z'].join(' ');
 }
 
-// transactions — уже отфильтрованный по нужному счёту/члену семьи список
-// (или все state.transactions для семейного разреза); период применяется здесь.
-function drawPieChart(rootId, transactions) {
-  const root = document.getElementById(rootId);
+const PIE_COLORS = ['var(--series-1)', 'var(--series-2)', 'var(--series-3)', 'var(--series-4)', 'var(--series-5)', 'var(--series-6)', 'var(--series-7)', 'var(--series-8)'];
+
+// Группирует расходы по категории. Операции без категории (например, только
+// что импортированные из банка и ещё не разобранные вручную) группируются по
+// тексту описания — так сразу видно, на что уходят деньги, без разбора вручную.
+function groupExpenses(transactions) {
   const { from, to } = currentPeriodBounds();
-  const byCategory = {};
+  const byKey = {};
   transactions.forEach((tx) => {
     if (tx.type !== 'expense') return;
     if (from && tx.date < from) return;
     if (to && tx.date >= to) return;
-    const key = tx.category_id || 'none';
-    byCategory[key] = (byCategory[key] || 0) + Number(tx.amount);
-  });
 
-  const entries = Object.entries(byCategory).sort((a, b) => b[1] - a[1]);
+    let key;
+    let label;
+    let icon = '';
+    if (tx.category_id) {
+      const cat = state.categories.find((c) => c.id === tx.category_id);
+      key = 'cat:' + tx.category_id;
+      label = cat ? cat.name : t('no_category_label');
+      icon = cat && cat.icon ? cat.icon + ' ' : '';
+    } else {
+      const desc = (tx.comment || '').trim();
+      key = desc ? 'desc:' + desc.toLowerCase() : 'none';
+      label = desc || t('no_category_label');
+    }
+    if (!byKey[key]) byKey[key] = { label, icon, amount: 0 };
+    byKey[key].amount += Number(tx.amount);
+  });
+  return Object.values(byKey).sort((a, b) => b.amount - a.amount);
+}
+
+// transactions — уже отфильтрованный по нужному счёту/члену семьи список
+// (или все state.transactions для семейного разреза); период применяется здесь.
+function drawPieChart(rootId, transactions) {
+  const root = document.getElementById(rootId);
+  const entries = groupExpenses(transactions);
   if (!entries.length) { root.innerHTML = `<div class="chart-empty">${t('chart_no_data')}</div>`; return; }
 
-  const total = entries.reduce((s, [, v]) => s + v, 0);
-  const colors = ['var(--series-1)', 'var(--series-2)', 'var(--series-3)', 'var(--series-4)', 'var(--series-5)', 'var(--series-6)', 'var(--series-7)', 'var(--series-8)'];
+  const total = entries.reduce((s, e) => s + e.amount, 0);
+  const colors = PIE_COLORS;
 
   let top = entries.slice(0, 7);
   const rest = entries.slice(7);
-  if (rest.length) top.push(['other', rest.reduce((s, [, v]) => s + v, 0)]);
+  if (rest.length) top.push({ label: '…', icon: '', amount: rest.reduce((s, e) => s + e.amount, 0) });
 
   const size = 220;
   const r = 90;
@@ -1488,15 +1515,12 @@ function drawPieChart(rootId, transactions) {
   const cy = size / 2;
   let angle = -90;
 
-  const slices = top.map(([catId, value], i) => {
-    const fraction = value / total;
+  const slices = top.map((entry, i) => {
+    const fraction = entry.amount / total;
     const sweep = Math.min(fraction * 360, 359.99);
     const path = describeArc(cx, cy, r, angle, angle + sweep);
     angle += sweep;
-    const cat = catId !== 'none' && catId !== 'other' ? state.categories.find((c) => c.id === catId) : null;
-    const label = catId === 'none' ? t('no_category_label') : catId === 'other' ? '…' : (cat ? cat.name : '');
-    const icon = cat && cat.icon ? cat.icon + ' ' : '';
-    return { path, color: colors[i % colors.length], value, label, icon, fraction };
+    return { path, color: colors[i % colors.length], value: entry.amount, label: entry.label, icon: entry.icon, fraction };
   });
 
   const svg = `
@@ -1528,6 +1552,37 @@ function drawPieChart(rootId, transactions) {
     });
     el.addEventListener('mouseleave', () => { tooltip.style.display = 'none'; });
   });
+}
+
+// Таблица "на что и сколько": та же группировка, что и в пироге, но списком —
+// удобно читать без вникания в детали, особенно сразу после импорта из банка,
+// когда операции ещё не разложены по категориям вручную.
+function renderExpenseTable(rootId, transactions) {
+  const root = document.getElementById(rootId);
+  const entries = groupExpenses(transactions);
+  if (!entries.length) { root.innerHTML = `<div class="chart-empty">${t('chart_no_data')}</div>`; return; }
+
+  const total = entries.reduce((s, e) => s + e.amount, 0);
+  const colors = PIE_COLORS;
+
+  root.innerHTML = `
+    <div class="expense-table">
+      ${entries.map((e, i) => {
+        const pct = total ? (e.amount / total) * 100 : 0;
+        return `
+          <div class="expense-row">
+            <div class="expense-row-top">
+              <span class="expense-row-label">${e.icon}${escapeHtml(e.label)}</span>
+              <span class="expense-row-amount money-value">${formatMoney(e.amount)}</span>
+            </div>
+            <div class="expense-row-bar-track">
+              <div class="expense-row-bar" style="width:${pct.toFixed(1)}%; background:${colors[i % colors.length]}"></div>
+            </div>
+            <div class="expense-row-pct">${pct.toFixed(1)}%</div>
+          </div>`;
+      }).join('')}
+    </div>
+  `;
 }
 
 // Общая (семейная) серия: суммарный ликвидный баланс + баланс каждого счёта.
