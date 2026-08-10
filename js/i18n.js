@@ -154,6 +154,8 @@ const I18N = {
     analytics_period_month: 'Этот месяц',
     analytics_period_3m: '3 месяца',
     analytics_period_year: 'Год',
+    analytics_period_custom: 'Свой период',
+    chart_balance_title: 'Баланс во времени',
     analytics_total_line_label: 'Итого ликвидные',
     chart_no_data: 'Недостаточно данных для графика.',
 
@@ -306,6 +308,8 @@ const I18N = {
     analytics_period_month: 'Цей місяць',
     analytics_period_3m: '3 місяці',
     analytics_period_year: 'Рік',
+    analytics_period_custom: 'Свій період',
+    chart_balance_title: 'Баланс у часі',
     analytics_total_line_label: 'Разом ліквідні',
     chart_no_data: 'Недостатньо даних для графіка.',
 
@@ -458,6 +462,8 @@ const I18N = {
     analytics_period_month: 'החודש הזה',
     analytics_period_3m: '3 חודשים',
     analytics_period_year: 'שנה',
+    analytics_period_custom: 'טווח מותאם',
+    chart_balance_title: 'יתרה לאורך זמן',
     analytics_total_line_label: 'סה"כ נזיל',
     chart_no_data: 'אין מספיק נתונים לגרף.',
 
@@ -610,6 +616,8 @@ const I18N = {
     analytics_period_month: 'This month',
     analytics_period_3m: '3 months',
     analytics_period_year: 'Year',
+    analytics_period_custom: 'Custom range',
+    chart_balance_title: 'Balance over time',
     analytics_total_line_label: 'Total liquid',
     chart_no_data: 'Not enough data for a chart.',
 

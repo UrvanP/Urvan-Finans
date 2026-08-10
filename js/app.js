@@ -8,7 +8,9 @@ let currentTab = 'overview';
 let privacyMode = false;
 let memberSubTab = {};
 let txFilters = {};
-let analyticsPeriod = 'all';
+let chartPeriod = 'all';
+let chartCustomFrom = '';
+let chartCustomTo = '';
 let importHeaders = [];
 let importParsedRows = null;
 
@@ -222,7 +224,6 @@ function renderTabs() {
     const avatar = `<span class="tab-avatar" style="background:${avatarColor(m.name)}">${escapeHtml(m.name.charAt(0).toUpperCase())}</span>`;
     nav.appendChild(makeTabButton('member:' + m.id, m.name, avatar));
   });
-  nav.appendChild(makeTabButton('analytics', t('tab_analytics'), '<span class="tab-icon">📊</span>'));
   nav.appendChild(makeTabButton('settings', t('tab_settings'), '<span class="tab-icon">⚙️</span>'));
 }
 
@@ -246,9 +247,6 @@ function renderCurrentTab() {
   } else if (currentTab === 'settings') {
     app.innerHTML = renderSettingsTab();
     attachSettingsEvents();
-  } else if (currentTab === 'analytics') {
-    app.innerHTML = renderAnalyticsTab();
-    attachAnalyticsEvents();
   } else if (currentTab.startsWith('member:')) {
     const memberId = currentTab.slice('member:'.length);
     app.innerHTML = renderMemberTab(memberId);
@@ -343,6 +341,10 @@ function renderOverview() {
   return `
     ${renderMonthlySummaryBanner()}
     <div class="summary-grid">
+      <div class="card balance-card total">
+        <div class="label">${t('overview_liquid_total')}</div>
+        <div class="amount money-value">${formatMoney(liquidTotal)}</div>
+      </div>
       ${memberBalances.map((x) => `
         <div class="card balance-card accent" style="border-left-color:${x.color}">
           <div class="label">${escapeHtml(x.member.name)}${t('overview_current_suffix')}</div>
@@ -352,14 +354,20 @@ function renderOverview() {
         <div class="label">${t('overview_cash_label')}</div>
         <div class="amount money-value">${formatMoney(cashBalance)}</div>
       </div>
-      <div class="card balance-card total">
-        <div class="label">${t('overview_liquid_total')}</div>
-        <div class="amount money-value">${formatMoney(liquidTotal)}</div>
-      </div>
       <div class="card balance-card accent" style="border-left-color:#7c5cd6">
         <div class="label">${t('overview_savings_total')}</div>
         <div class="amount money-value">${formatMoney(savingsTotal)}</div>
       </div>
+    </div>
+
+    ${renderPeriodControl()}
+    <div class="card chart-card">
+      <div class="section-title" style="margin-top:0;"><h2>${t('analytics_line_title')}</h2></div>
+      <div id="overview-line-chart"></div>
+    </div>
+    <div class="card chart-card">
+      <div class="section-title" style="margin-top:0;"><h2>${t('analytics_pie_title')}</h2></div>
+      <div id="overview-pie-chart"></div>
     </div>
 
     <div class="section-title">
@@ -379,6 +387,10 @@ function attachOverviewEvents() {
       banner.remove();
     });
   }
+
+  attachPeriodControl();
+  renderLiquidLineChart('overview-line-chart');
+  drawPieChart('overview-pie-chart', state.transactions);
 
   const cash = cashAccount();
   if (!cash) return;
@@ -426,6 +438,18 @@ function renderBankSubtab(member, account) {
       <div class="amount money-value">${formatMoney(balance)}</div>
     </div>
 
+    ${account ? `
+      ${renderPeriodControl()}
+      <div class="card chart-card">
+        <div class="section-title" style="margin-top:0;"><h2>${t('chart_balance_title')}</h2></div>
+        <div id="member-line-chart"></div>
+      </div>
+      <div class="card chart-card">
+        <div class="section-title" style="margin-top:0;"><h2>${t('analytics_pie_title')}</h2></div>
+        <div id="member-pie-chart"></div>
+      </div>
+    ` : ''}
+
     <div class="section-title">
       <h2>${t('section_operations')}</h2>
       <button class="btn btn-small" id="btn-add-tx">${t('add_transaction_btn')}</button>
@@ -463,6 +487,14 @@ function renderSavingsSubtab(account) {
         </div>
       </div>
     </div>
+
+    ${cps.length >= 2 ? `
+      ${renderPeriodControl()}
+      <div class="card chart-card">
+        <div class="section-title" style="margin-top:0;"><h2>${t('chart_balance_title')}</h2></div>
+        <div id="savings-line-chart"></div>
+      </div>
+    ` : ''}
 
     <div class="section-title">
       <h2>${t('section_checkpoints')}</h2>
@@ -516,6 +548,9 @@ function attachMemberEvents(memberId) {
 
   if (selected === 'current') {
     if (account) {
+      attachPeriodControl();
+      renderAccountBalanceChart('member-line-chart', account);
+      drawPieChart('member-pie-chart', state.transactions.filter((tx) => tx.account_id === account.id));
       document.getElementById('btn-add-tx').addEventListener('click', () => openTransactionModal({ accountId: account.id }));
       attachTxListEvents(account.id);
     }
@@ -524,6 +559,11 @@ function attachMemberEvents(memberId) {
 
   const savAccount = savings.find((s) => s.id === selected);
   if (!savAccount) return;
+
+  if (document.getElementById('savings-line-chart')) {
+    attachPeriodControl();
+    renderCheckpointBalanceChart('savings-line-chart', savAccount);
+  }
 
   document.getElementById('btn-rename-savings').addEventListener('click', () => openRenameSavingsModal(savAccount.id));
   document.getElementById('btn-delete-savings').addEventListener('click', async () => {
@@ -1336,49 +1376,74 @@ async function doImport() {
 }
 
 // ---------------------------------------------------------------
-// Вкладка "Аналитика": расходы по категориям + баланс во времени
+// Графики: общий выбор периода (с произвольным диапазоном месяцев)
+// + переиспользуемые функции для пирога и линейного графика.
+// Показываются прямо на нужной вкладке, а не в отдельном разделе.
 // ---------------------------------------------------------------
 
-function renderAnalyticsTab() {
+function currentPeriodBounds() {
+  if (chartPeriod === 'custom') {
+    const from = chartCustomFrom ? `${chartCustomFrom}-01` : null;
+    let to = null;
+    if (chartCustomTo) {
+      const [y, m] = chartCustomTo.split('-').map(Number);
+      to = new Date(y, m, 1).toISOString().slice(0, 10); // первое число месяца, следующего за выбранным
+    }
+    return { from, to };
+  }
+  const now = new Date();
+  if (chartPeriod === 'month') return { from: new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10), to: null };
+  if (chartPeriod === '3m') return { from: new Date(now.getFullYear(), now.getMonth() - 2, 1).toISOString().slice(0, 10), to: null };
+  if (chartPeriod === 'year') return { from: new Date(now.getFullYear(), 0, 1).toISOString().slice(0, 10), to: null };
+  return { from: null, to: null };
+}
+
+// Индексы [start, end] (включительно) внутри chronologically-отсортированного
+// массива dates, попадающие в текущий период. null, если ничего не попало.
+function periodIndexRange(dates) {
+  const { from, to } = currentPeriodBounds();
+  let start = 0;
+  let end = dates.length - 1;
+  if (from) {
+    start = dates.findIndex((d) => d >= from);
+    if (start === -1) return null;
+  }
+  if (to) {
+    end = dates.length - 1;
+    while (end >= start && dates[end] >= to) end--;
+    if (end < start) return null;
+  }
+  return { start, end };
+}
+
+function renderPeriodControl() {
+  const isCustom = chartPeriod === 'custom';
   return `
     <div class="chart-filter-row">
-      <select id="an-period">
-        <option value="all">${t('analytics_period_all')}</option>
-        <option value="month">${t('analytics_period_month')}</option>
-        <option value="3m">${t('analytics_period_3m')}</option>
-        <option value="year">${t('analytics_period_year')}</option>
+      <select id="period-select">
+        <option value="all" ${chartPeriod === 'all' ? 'selected' : ''}>${t('analytics_period_all')}</option>
+        <option value="month" ${chartPeriod === 'month' ? 'selected' : ''}>${t('analytics_period_month')}</option>
+        <option value="3m" ${chartPeriod === '3m' ? 'selected' : ''}>${t('analytics_period_3m')}</option>
+        <option value="year" ${chartPeriod === 'year' ? 'selected' : ''}>${t('analytics_period_year')}</option>
+        <option value="custom" ${isCustom ? 'selected' : ''}>${t('analytics_period_custom')}</option>
       </select>
-    </div>
-
-    <div class="card chart-card">
-      <div class="section-title" style="margin-top:0;"><h2>${t('analytics_pie_title')}</h2></div>
-      <div id="pie-chart-root"></div>
-    </div>
-
-    <div class="card chart-card">
-      <div class="section-title" style="margin-top:0;"><h2>${t('analytics_line_title')}</h2></div>
-      <div id="line-chart-root"></div>
+      <input type="month" id="period-from" value="${chartCustomFrom}" title="${t('filter_date_from')}" style="${isCustom ? '' : 'display:none;'}" />
+      <input type="month" id="period-to" value="${chartCustomTo}" title="${t('filter_date_to')}" style="${isCustom ? '' : 'display:none;'}" />
     </div>
   `;
 }
 
-function periodFromDate() {
-  const now = new Date();
-  if (analyticsPeriod === 'month') return new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
-  if (analyticsPeriod === '3m') return new Date(now.getFullYear(), now.getMonth() - 2, 1).toISOString().slice(0, 10);
-  if (analyticsPeriod === 'year') return new Date(now.getFullYear(), 0, 1).toISOString().slice(0, 10);
-  return null;
-}
-
-function attachAnalyticsEvents() {
-  const periodSelect = document.getElementById('an-period');
-  periodSelect.value = analyticsPeriod;
-  periodSelect.addEventListener('change', () => {
-    analyticsPeriod = periodSelect.value;
+function attachPeriodControl() {
+  const select = document.getElementById('period-select');
+  if (!select) return;
+  const fromEl = document.getElementById('period-from');
+  const toEl = document.getElementById('period-to');
+  select.addEventListener('change', () => {
+    chartPeriod = select.value;
     renderCurrentTab();
   });
-  renderPieChart();
-  renderLineChart();
+  fromEl.addEventListener('change', () => { chartCustomFrom = fromEl.value; renderCurrentTab(); });
+  toEl.addEventListener('change', () => { chartCustomTo = toEl.value; renderCurrentTab(); });
 }
 
 function polarToCartesian(cx, cy, r, angleDeg) {
@@ -1393,13 +1458,16 @@ function describeArc(cx, cy, r, startDeg, endDeg) {
   return ['M', cx, cy, 'L', start.x, start.y, 'A', r, r, 0, largeArc, 0, end.x, end.y, 'Z'].join(' ');
 }
 
-function renderPieChart() {
-  const root = document.getElementById('pie-chart-root');
-  const fromDate = periodFromDate();
+// transactions — уже отфильтрованный по нужному счёту/члену семьи список
+// (или все state.transactions для семейного разреза); период применяется здесь.
+function drawPieChart(rootId, transactions) {
+  const root = document.getElementById(rootId);
+  const { from, to } = currentPeriodBounds();
   const byCategory = {};
-  state.transactions.forEach((tx) => {
+  transactions.forEach((tx) => {
     if (tx.type !== 'expense') return;
-    if (fromDate && tx.date < fromDate) return;
+    if (from && tx.date < from) return;
+    if (to && tx.date >= to) return;
     const key = tx.category_id || 'none';
     byCategory[key] = (byCategory[key] || 0) + Number(tx.amount);
   });
@@ -1447,9 +1515,9 @@ function renderPieChart() {
     </div>
   `;
 
-  root.innerHTML = `<div class="chart-svg-wrap">${svg}<div class="chart-tooltip" id="pie-tooltip"></div></div>${legend}`;
+  root.innerHTML = `<div class="chart-svg-wrap">${svg}<div class="chart-tooltip" id="${rootId}-tooltip"></div></div>${legend}`;
 
-  const tooltip = document.getElementById('pie-tooltip');
+  const tooltip = document.getElementById(`${rootId}-tooltip`);
   root.querySelectorAll('.pie-slice').forEach((el, i) => {
     el.addEventListener('mousemove', (e) => {
       const p = slices[i];
@@ -1462,6 +1530,7 @@ function renderPieChart() {
   });
 }
 
+// Общая (семейная) серия: суммарный ликвидный баланс + баланс каждого счёта.
 function computeLiquidSeries() {
   const liquidAccounts = state.accounts.filter((a) => a.type === 'current' || a.type === 'cash');
   if (!liquidAccounts.length) return null;
@@ -1516,24 +1585,72 @@ function computeLiquidSeries() {
   return series;
 }
 
-function renderLineChart() {
-  const root = document.getElementById('line-chart-root');
-  let series = computeLiquidSeries();
-  if (!series) { root.innerHTML = `<div class="chart-empty">${t('chart_no_data')}</div>`; return; }
+// Баланс одного текущего/наличного счёта во времени.
+function computeSingleAccountSeries(account) {
+  const txs = state.transactions
+    .filter((tx) => tx.account_id === account.id)
+    .slice()
+    .sort((a, b) => a.date.localeCompare(b.date) || a.created_at.localeCompare(b.created_at));
+  let running = Number(account.initial_balance);
+  const dates = [];
+  const values = [];
+  txs.forEach((tx) => {
+    running += tx.type === 'income' ? Number(tx.amount) : -Number(tx.amount);
+    dates.push(tx.date);
+    values.push(running);
+  });
+  return { dates, values };
+}
 
-  const fromDate = periodFromDate();
-  if (fromDate) {
-    const startIdx = series.dates.findIndex((d) => d >= fromDate);
-    if (startIdx === -1) { root.innerHTML = `<div class="chart-empty">${t('chart_no_data')}</div>`; return; }
-    series = {
-      dates: series.dates.slice(startIdx),
-      total: series.total.slice(startIdx),
-      byAccount: Object.fromEntries(Object.entries(series.byAccount).map(([k, v]) => [k, v.slice(startIdx)])),
-      accounts: series.accounts,
-    };
-  }
+function renderLiquidLineChart(rootId) {
+  const series = computeLiquidSeries();
+  if (!series) { document.getElementById(rootId).innerHTML = `<div class="chart-empty">${t('chart_no_data')}</div>`; return; }
 
-  if (series.dates.length < 2) { root.innerHTML = `<div class="chart-empty">${t('chart_no_data')}</div>`; return; }
+  const range = periodIndexRange(series.dates);
+  if (!range || range.end - range.start < 1) { document.getElementById(rootId).innerHTML = `<div class="chart-empty">${t('chart_no_data')}</div>`; return; }
+
+  const dates = series.dates.slice(range.start, range.end + 1);
+  const colors = ['var(--series-1)', 'var(--series-2)', 'var(--series-3)', 'var(--series-4)', 'var(--series-5)'];
+  const lines = [{ label: t('analytics_total_line_label'), values: series.total.slice(range.start, range.end + 1), color: 'var(--accent)', width: 3 }];
+  series.accounts.forEach((acc, i) => {
+    const label = acc.type === 'cash' ? t('overview_cash_label') : ((state.members.find((m) => m.id === acc.member_id) || {}).name || acc.name);
+    lines.push({ label, values: series.byAccount[acc.id].slice(range.start, range.end + 1), color: colors[i % colors.length], width: 2 });
+  });
+
+  drawLineChart(rootId, dates, lines);
+}
+
+function renderAccountBalanceChart(rootId, account) {
+  const { dates, values } = computeSingleAccountSeries(account);
+  if (dates.length < 2) { document.getElementById(rootId).innerHTML = `<div class="chart-empty">${t('chart_no_data')}</div>`; return; }
+
+  const range = periodIndexRange(dates);
+  if (!range || range.end - range.start < 1) { document.getElementById(rootId).innerHTML = `<div class="chart-empty">${t('chart_no_data')}</div>`; return; }
+
+  drawLineChart(rootId, dates.slice(range.start, range.end + 1), [
+    { label: t('chart_balance_title'), values: values.slice(range.start, range.end + 1), color: 'var(--accent)', width: 3 },
+  ]);
+}
+
+function renderCheckpointBalanceChart(rootId, account) {
+  const cps = checkpointsSorted(account.id, 'asc');
+  const dates = cps.map((c) => c.date);
+  const values = cps.map((c) => Number(c.balance));
+  if (dates.length < 2) { document.getElementById(rootId).innerHTML = `<div class="chart-empty">${t('chart_no_data')}</div>`; return; }
+
+  const range = periodIndexRange(dates);
+  if (!range || range.end - range.start < 1) { document.getElementById(rootId).innerHTML = `<div class="chart-empty">${t('chart_no_data')}</div>`; return; }
+
+  drawLineChart(rootId, dates.slice(range.start, range.end + 1), [
+    { label: t('chart_balance_title'), values: values.slice(range.start, range.end + 1), color: 'var(--accent)', width: 3 },
+  ]);
+}
+
+// Универсальная отрисовка линейного графика: dates — общая ось X,
+// lines — массив {label, values, color, width}, значения выровнены по dates.
+function drawLineChart(rootId, dates, lines) {
+  const root = document.getElementById(rootId);
+  if (!dates || dates.length < 2) { root.innerHTML = `<div class="chart-empty">${t('chart_no_data')}</div>`; return; }
 
   const width = 640;
   const height = 260;
@@ -1544,20 +1661,13 @@ function renderLineChart() {
   const plotW = width - padL - padR;
   const plotH = height - padT - padB;
 
-  const allValues = [...series.total, ...Object.values(series.byAccount).flat()];
+  const allValues = lines.flatMap((l) => l.values);
   const minV = Math.min(0, ...allValues);
   const maxV = Math.max(...allValues);
   const range = maxV - minV || 1;
 
-  const xAt = (i) => padL + (i / (series.dates.length - 1)) * plotW;
+  const xAt = (i) => padL + (i / (dates.length - 1)) * plotW;
   const yAt = (v) => padT + plotH - ((v - minV) / range) * plotH;
-
-  const colors = ['var(--series-1)', 'var(--series-2)', 'var(--series-3)', 'var(--series-4)', 'var(--series-5)'];
-  const lines = [{ label: t('analytics_total_line_label'), values: series.total, color: 'var(--accent)', width: 3 }];
-  series.accounts.forEach((acc, i) => {
-    const label = acc.type === 'cash' ? t('overview_cash_label') : ((state.members.find((m) => m.id === acc.member_id) || {}).name || acc.name);
-    lines.push({ label, values: series.byAccount[acc.id], color: colors[i % colors.length], width: 2 });
-  });
 
   const pathFor = (values) => values.map((v, i) => `${i === 0 ? 'M' : 'L'} ${xAt(i).toFixed(1)} ${yAt(v).toFixed(1)}`).join(' ');
 
@@ -1569,40 +1679,40 @@ function renderLineChart() {
   }
 
   const svg = `
-    <svg viewBox="0 0 ${width} ${height}" width="100%" height="${height}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="${t('analytics_line_title')}">
+    <svg viewBox="0 0 ${width} ${height}" width="100%" height="${height}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="${t('chart_balance_title')}">
       ${gridLines.map((g) => `
         <line x1="${padL}" y1="${g.y.toFixed(1)}" x2="${width - padR}" y2="${g.y.toFixed(1)}" stroke="var(--chart-grid)" stroke-width="1" />
         <text x="${padL - 8}" y="${(g.y + 3).toFixed(1)}" text-anchor="end" font-size="10" fill="var(--chart-ink-muted)" class="money-value">${formatMoney(g.v)}</text>
       `).join('')}
       <line x1="${padL}" y1="${padT + plotH}" x2="${width - padR}" y2="${padT + plotH}" stroke="var(--chart-axis)" stroke-width="1" />
-      <text x="${padL}" y="${height - 8}" font-size="10" fill="var(--chart-ink-muted)" text-anchor="start">${formatDate(series.dates[0])}</text>
-      <text x="${width - padR}" y="${height - 8}" font-size="10" fill="var(--chart-ink-muted)" text-anchor="end">${formatDate(series.dates[series.dates.length - 1])}</text>
+      <text x="${padL}" y="${height - 8}" font-size="10" fill="var(--chart-ink-muted)" text-anchor="start">${formatDate(dates[0])}</text>
+      <text x="${width - padR}" y="${height - 8}" font-size="10" fill="var(--chart-ink-muted)" text-anchor="end">${formatDate(dates[dates.length - 1])}</text>
       ${lines.map((line) => `<path d="${pathFor(line.values)}" fill="none" stroke="${line.color}" stroke-width="${line.width}" stroke-linecap="round" stroke-linejoin="round" />`).join('')}
-      <line id="line-crosshair" x1="0" y1="${padT}" x2="0" y2="${padT + plotH}" stroke="var(--chart-axis)" stroke-width="1" style="display:none;" />
-      <rect id="line-hover-rect" x="${padL}" y="${padT}" width="${plotW}" height="${plotH}" fill="transparent" />
+      <line id="${rootId}-crosshair" x1="0" y1="${padT}" x2="0" y2="${padT + plotH}" stroke="var(--chart-axis)" stroke-width="1" style="display:none;" />
+      <rect id="${rootId}-hover-rect" x="${padL}" y="${padT}" width="${plotW}" height="${plotH}" fill="transparent" />
     </svg>
   `;
 
-  const legend = `
+  const legend = lines.length > 1 ? `
     <div class="chart-legend">
       ${lines.map((l) => `<div class="legend-item"><span class="legend-dot" style="background:${l.color}"></span>${escapeHtml(l.label)}</div>`).join('')}
     </div>
-  `;
+  ` : '';
 
-  root.innerHTML = `<div class="chart-svg-wrap">${svg}<div class="chart-tooltip" id="line-tooltip"></div></div>${legend}`;
+  root.innerHTML = `<div class="chart-svg-wrap">${svg}<div class="chart-tooltip" id="${rootId}-tooltip"></div></div>${legend}`;
 
   const svgEl = root.querySelector('svg');
-  const hoverRect = document.getElementById('line-hover-rect');
-  const crosshair = document.getElementById('line-crosshair');
-  const tooltip = document.getElementById('line-tooltip');
+  const hoverRect = document.getElementById(`${rootId}-hover-rect`);
+  const crosshair = document.getElementById(`${rootId}-crosshair`);
+  const tooltip = document.getElementById(`${rootId}-tooltip`);
 
   hoverRect.addEventListener('mousemove', (e) => {
     const bounds = svgEl.getBoundingClientRect();
     const scaleX = width / bounds.width;
     const scaleY = height / bounds.height;
     const localX = (e.clientX - bounds.left) * scaleX;
-    let idx = Math.round(((localX - padL) / plotW) * (series.dates.length - 1));
-    idx = Math.max(0, Math.min(series.dates.length - 1, idx));
+    let idx = Math.round(((localX - padL) / plotW) * (dates.length - 1));
+    idx = Math.max(0, Math.min(dates.length - 1, idx));
     const cx = xAt(idx);
     crosshair.setAttribute('x1', cx);
     crosshair.setAttribute('x2', cx);
@@ -1611,7 +1721,7 @@ function renderLineChart() {
     tooltip.style.display = 'block';
     tooltip.style.left = (cx / scaleX) + 'px';
     tooltip.style.top = (yAt(lines[0].values[idx]) / scaleY) + 'px';
-    tooltip.innerHTML = `<strong>${formatDate(series.dates[idx])}</strong><br>` +
+    tooltip.innerHTML = `<strong>${formatDate(dates[idx])}</strong><br>` +
       lines.map((l) => `<span style="color:${l.color}">●</span> ${escapeHtml(l.label)}: <span class="money-value">${formatMoney(l.values[idx])}</span>`).join('<br>');
   });
   hoverRect.addEventListener('mouseleave', () => {
