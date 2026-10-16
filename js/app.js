@@ -209,7 +209,7 @@ function openLanguageModal() {
 // Вкладки
 // ---------------------------------------------------------------
 
-const AVATAR_COLORS = ['#3b6ef6', '#1a9d5c', '#d64545', '#b3762c', '#7c5cd6', '#0e9aa7'];
+const AVATAR_COLORS = ['#8a9a2e', '#c2861f', '#c2672c', '#5f7a34', '#6a52b3', '#3f8f82'];
 
 function avatarColor(name) {
   const sum = [...name].reduce((s, ch) => s + ch.charCodeAt(0), 0);
@@ -340,21 +340,20 @@ function renderOverview() {
 
   return `
     ${renderMonthlySummaryBanner()}
+    <div class="card gauge-card">
+      <div id="overview-total-gauge"></div>
+    </div>
     <div class="summary-grid">
-      <div class="card balance-card total">
-        <div class="label">${t('overview_liquid_total')}</div>
-        <div class="amount money-value">${formatMoney(liquidTotal)}</div>
-      </div>
       ${memberBalances.map((x) => `
         <div class="card balance-card accent" style="border-left-color:${x.color}">
           <div class="label">${escapeHtml(x.member.name)}${t('overview_current_suffix')}</div>
           <div class="amount money-value">${formatMoney(x.balance)}</div>
         </div>`).join('')}
-      <div class="card balance-card accent" style="border-left-color:#0e9aa7">
+      <div class="card balance-card accent" style="border-left-color:var(--accent-cash)">
         <div class="label">${t('overview_cash_label')}</div>
         <div class="amount money-value">${formatMoney(cashBalance)}</div>
       </div>
-      <div class="card balance-card accent" style="border-left-color:#7c5cd6">
+      <div class="card balance-card accent" style="border-left-color:var(--accent-savings)">
         <div class="label">${t('overview_savings_total')}</div>
         <div class="amount money-value">${formatMoney(savingsTotal)}</div>
       </div>
@@ -395,6 +394,17 @@ function attachOverviewEvents() {
   renderExpenseTable('overview-expense-table', state.transactions);
 
   const cash = cashAccount();
+  const savingsTotal = state.accounts
+    .filter((a) => a.type === 'savings')
+    .reduce((sum, a) => sum + accountBalance(a), 0);
+  const liquidTotal = state.members
+    .reduce((s, m) => s + accountBalance(currentAccountOf(m.id)), 0) + accountBalance(cash);
+  drawRadialGauge('overview-total-gauge', {
+    fraction: liquidTotal / ((liquidTotal + savingsTotal) || 1),
+    centerHtml: `<span class="money-value">${formatMoney(liquidTotal)}</span>`,
+    label: t('overview_liquid_total'),
+  });
+
   if (!cash) return;
   document.getElementById('btn-add-cash-tx').addEventListener('click', () => openTransactionModal({ accountId: cash.id }));
   attachTxListEvents(cash.id);
@@ -1783,6 +1793,34 @@ function drawLineChart(rootId, dates, lines) {
     crosshair.style.display = 'none';
     tooltip.style.display = 'none';
   });
+}
+
+function drawRadialGauge(rootId, { fraction, centerHtml, label, color = 'var(--accent)' }) {
+  const root = document.getElementById(rootId);
+  if (!root) return;
+
+  const clamped = Math.max(0, Math.min(1, fraction || 0));
+  const size = 220;
+  const strokeWidth = 18;
+  const r = (size - strokeWidth) / 2;
+  const cx = size / 2;
+  const cy = size / 2;
+  const circumference = 2 * Math.PI * r;
+  const offset = circumference * (1 - clamped);
+
+  root.innerHTML = `
+    <div class="gauge-wrap">
+      <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="transform:rotate(-90deg)">
+        <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--surface-2)" stroke-width="${strokeWidth}" />
+        <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${color}" stroke-width="${strokeWidth}"
+          stroke-linecap="round" stroke-dasharray="${circumference}" stroke-dashoffset="${offset}" />
+      </svg>
+      <div class="gauge-center">
+        <div class="gauge-value">${centerHtml}</div>
+        ${label ? `<div class="gauge-label">${escapeHtml(label)}</div>` : ''}
+      </div>
+    </div>
+  `;
 }
 
 // ---------------------------------------------------------------

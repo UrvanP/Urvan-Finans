@@ -1,7 +1,7 @@
 // Кэшируем только "оболочку" приложения (HTML/CSS/JS), чтобы оно
 // быстро открывалось и не падало без сети. Данные из Supabase
 // всегда идут напрямую по сети — офлайн-работу с данными не делаем.
-const CACHE_NAME = 'urvan-finance-shell-v5';
+const CACHE_NAME = 'urvan-finance-shell-v6';
 const SHELL_FILES = [
   './',
   './index.html',
