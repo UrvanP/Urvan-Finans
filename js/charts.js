@@ -224,7 +224,7 @@ export function renderExpenseTable(rootId, transactions) {
 }
 
 // Общая (семейная) серия: суммарный ликвидный баланс + баланс каждого счёта.
-export function computeLiquidSeries() {
+function computeLiquidSeries() {
   const liquidAccounts = state.accounts.filter((a) => a.type === 'current' || a.type === 'cash');
   if (!liquidAccounts.length) return null;
 
@@ -295,22 +295,79 @@ export function computeSingleAccountSeries(account) {
   return { dates, values };
 }
 
-export function renderLiquidLineChart(rootId) {
-  const series = computeLiquidSeries();
+// Объединяет две разные по природе серии в одну "общий капитал":
+// ликвидные счета считаются по операциям (ежедневная история), копилки —
+// по чекапам (редкие точечные замеры). Для каждой даты, где что-то из этого
+// изменилось, пересчитываем суммарный капитал, перенося последнее известное
+// значение другой серии вперёд (forward-fill).
+export function computeNetWorthSeries() {
+  const liquid = computeLiquidSeries();
+  const savingsAccounts = state.accounts.filter((a) => a.type === 'savings');
+  const initialSavingsTotal = savingsAccounts.reduce((s, a) => s + (Number(a.initial_balance) || 0), 0);
+
+  const savingsAccountIds = new Set(savingsAccounts.map((a) => a.id));
+  const allCheckpoints = state.checkpoints
+    .filter((c) => savingsAccountIds.has(c.account_id))
+    .slice()
+    .sort((a, b) => a.date.localeCompare(b.date) || a.created_at.localeCompare(b.created_at));
+
+  if (!liquid && !allCheckpoints.length) return null;
+
+  const lastKnown = {};
+  savingsAccounts.forEach((a) => { lastKnown[a.id] = Number(a.initial_balance) || 0; });
+
+  // Точки "дата → суммарные накопления на эту дату", по одной на дату
+  // (если в один день несколько чекапов, учитываем все и берём итог).
+  const savingsPoints = [];
+  let ci = 0;
+  while (ci < allCheckpoints.length) {
+    const date = allCheckpoints[ci].date;
+    while (ci < allCheckpoints.length && allCheckpoints[ci].date === date) {
+      lastKnown[allCheckpoints[ci].account_id] = Number(allCheckpoints[ci].balance);
+      ci++;
+    }
+    savingsPoints.push({ date, total: Object.values(lastKnown).reduce((s, v) => s + v, 0) });
+  }
+
+  const liquidDates = liquid ? liquid.dates : [];
+  const allDates = Array.from(new Set([...liquidDates, ...savingsPoints.map((p) => p.date)])).sort();
+
+  const networth = [];
+  const liquidSeries = [];
+  const savingsSeries = [];
+  let li = 0;
+  let si = 0;
+  let curLiquid = 0;
+  let curSavings = initialSavingsTotal;
+
+  allDates.forEach((date) => {
+    while (li < liquidDates.length && liquidDates[li] === date) { curLiquid = liquid.total[li]; li++; }
+    while (si < savingsPoints.length && savingsPoints[si].date === date) { curSavings = savingsPoints[si].total; si++; }
+    liquidSeries.push(curLiquid);
+    savingsSeries.push(curSavings);
+    networth.push(curLiquid + curSavings);
+  });
+
+  return { dates: allDates, networth, liquid: liquidSeries, savings: savingsSeries };
+}
+
+// Главный график на "Общем статусе": общий капитал (ликвидность + копилки)
+// одной жирной линией, плюс обе составляющие тоньше для контекста.
+export function renderNetWorthLineChart(rootId) {
+  const series = computeNetWorthSeries();
   if (!series) { document.getElementById(rootId).innerHTML = `<div class="chart-empty">${t('chart_no_data')}</div>`; return; }
 
   const range = periodIndexRange(series.dates);
   if (!range || range.end - range.start < 1) { document.getElementById(rootId).innerHTML = `<div class="chart-empty">${t('chart_no_data')}</div>`; return; }
 
-  const dates = series.dates.slice(range.start, range.end + 1);
-  const colors = ['var(--series-1)', 'var(--series-2)', 'var(--series-3)', 'var(--series-4)', 'var(--series-5)'];
-  const lines = [{ label: t('analytics_total_line_label'), values: series.total.slice(range.start, range.end + 1), color: 'var(--accent)', width: 3 }];
-  series.accounts.forEach((acc, i) => {
-    const label = acc.type === 'cash' ? t('overview_cash_label') : ((state.members.find((m) => m.id === acc.member_id) || {}).name || acc.name);
-    lines.push({ label, values: series.byAccount[acc.id].slice(range.start, range.end + 1), color: colors[i % colors.length], width: 2 });
-  });
+  const slice = (arr) => arr.slice(range.start, range.end + 1);
+  const lines = [
+    { label: t('analytics_total_line_label'), values: slice(series.networth), color: 'var(--accent)', width: 3 },
+    { label: t('analytics_liquid_line_label'), values: slice(series.liquid), color: 'var(--series-2)', width: 2 },
+    { label: t('analytics_savings_line_label'), values: slice(series.savings), color: 'var(--series-3)', width: 2 },
+  ];
 
-  drawLineChart(rootId, dates, lines);
+  drawLineChart(rootId, slice(series.dates), lines);
 }
 
 export function renderAccountBalanceChart(rootId, account) {

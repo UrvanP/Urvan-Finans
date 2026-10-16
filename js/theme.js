@@ -50,6 +50,9 @@ export function applyStaticText() {
   const langBtn = document.getElementById('btn-lang');
   langBtn.title = t('lang_btn_title');
   langBtn.innerHTML = icon('globe');
+  const searchBtn = document.getElementById('btn-search');
+  searchBtn.title = t('search_btn_title');
+  searchBtn.innerHTML = icon('search');
   applyPrivacyButton();
   applyThemeButton();
 }

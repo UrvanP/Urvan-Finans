@@ -3,7 +3,7 @@
 import { state, cashAccount, currentAccountOf, accountBalance, avatarColor } from '../state.js';
 import { t } from '../i18n.js';
 import { formatMoney, escapeHtml, animateCountUp } from '../utils.js';
-import { renderPeriodControl, attachPeriodControl, renderLiquidLineChart, drawPieChart, renderExpenseTable, drawRadialGauge } from '../charts.js';
+import { renderPeriodControl, attachPeriodControl, renderNetWorthLineChart, drawPieChart, renderExpenseTable, drawRadialGauge } from '../charts.js';
 import { renderTxSection, attachTxListEvents } from './transactions.js';
 import { openTransactionModal } from './modalForms.js';
 import { icon } from '../icons.js';
@@ -109,7 +109,7 @@ export function attachOverviewEvents() {
   }
 
   attachPeriodControl();
-  renderLiquidLineChart('overview-line-chart');
+  renderNetWorthLineChart('overview-line-chart');
   drawPieChart('overview-pie-chart', state.transactions);
   renderExpenseTable('overview-expense-table', state.transactions);
 

@@ -795,6 +795,20 @@ main#app {
   font-weight: 600;
 }
 
+.global-search-results {
+  max-height: 55vh;
+  overflow-y: auto;
+}
+
+.search-result {
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.search-result:hover {
+  background: var(--surface-2);
+}
+
 .error-banner {
   background: var(--accent-soft);
   border: 1px solid var(--expense);
