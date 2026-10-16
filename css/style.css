@@ -47,7 +47,7 @@
   --chart-grid: #e1e0d9;
   --chart-axis: #c3c2b7;
   --chart-ink: #0b0b0b;
-  --chart-ink-muted: #898781;
+  --chart-ink-muted: #6b6a5e;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -139,9 +139,18 @@ a:focus-visible {
 body {
   margin: 0;
   font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  line-height: 1.45;
   background: var(--bg);
   color: var(--text);
   -webkit-tap-highlight-color: transparent;
+}
+
+/* Иврит в обычном латинском шрифтовом стеке часто рендерится заметно тоньше
+   и мельче, чем кириллица/латиница того же размера — подключаем шрифты
+   с более уверенным ивритским начертанием и чуть поднимаем насыщенность. */
+:lang(he) {
+  font-family: "Arial Hebrew", "Noto Sans Hebrew", "Segoe UI", Arial, sans-serif;
+  font-weight: 500;
 }
 
 .app-header {
@@ -323,6 +332,15 @@ main#app {
   max-width: 900px;
   margin: 0 auto;
   padding-bottom: 32px;
+}
+
+/* На широких экранах переключение между "Портфолио" и участниками уже есть
+   в шапке (header-identity) — верхний ряд вкладок с именами был бы
+   дублированием и загромождал вид. Настройки доступны отдельной иконкой. */
+@media (min-width: 641px) {
+  .tabs {
+    display: none;
+  }
 }
 
 @media (max-width: 640px) {
@@ -591,6 +609,35 @@ main#app {
   color: var(--text-muted);
   font-size: var(--text-sm);
   margin-top: 4px;
+}
+
+.donut-wrap {
+  position: relative;
+  width: 220px;
+  max-width: 100%;
+  margin: 0 auto;
+}
+
+.donut-wrap svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.donut-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  pointer-events: none;
+}
+
+.donut-total {
+  font-size: var(--text-lg);
+  font-weight: 800;
+  letter-spacing: -0.02em;
 }
 
 /* ---------- Подвкладки члена семьи (Банк счёт / копилки) ---------- */

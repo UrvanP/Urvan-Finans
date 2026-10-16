@@ -52,6 +52,9 @@ export function applyStaticText() {
   const searchBtn = document.getElementById('btn-search');
   searchBtn.title = t('search_btn_title');
   searchBtn.innerHTML = icon('search');
+  const settingsBtn = document.getElementById('btn-settings');
+  settingsBtn.title = t('tab_settings');
+  settingsBtn.innerHTML = icon('settings');
   applyPrivacyButton();
   applyThemeButton();
 }

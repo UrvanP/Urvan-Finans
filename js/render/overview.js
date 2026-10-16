@@ -1,6 +1,6 @@
 // Вкладка "Общий статус": гейдж ликвидных средств, карточки участников,
 // графики и операции по общей наличности.
-import { state, cashAccount, currentAccountOf, accountBalance, avatarColor } from '../state.js';
+import { state, cashAccount, currentAccountOf, accountBalance, avatarColor, displayMemberName } from '../state.js';
 import { t } from '../i18n.js';
 import { formatMoney, escapeHtml, animateCountUp } from '../utils.js';
 import { renderPeriodControl, attachPeriodControl, renderNetWorthLineChart, drawPieChart, renderExpenseTable, drawRadialGauge, computeNetWorthMonthlyChange } from '../charts.js';
@@ -67,7 +67,7 @@ export function renderOverview() {
     <div class="summary-grid">
       ${memberBalances.map((x) => `
         <div class="card balance-card accent" style="border-left-color:${x.color}">
-          <div class="label">${escapeHtml(x.member.name)}${t('overview_current_suffix')}</div>
+          <div class="label">${escapeHtml(displayMemberName(x.member.name))}${t('overview_current_suffix')}</div>
           <div class="amount money-value">${formatMoney(x.balance)}</div>
         </div>`).join('')}
       <div class="card balance-card accent" style="border-left-color:var(--accent-cash)">

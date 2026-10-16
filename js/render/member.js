@@ -1,5 +1,5 @@
 // Вкладка члена семьи: подвкладки "Банк счёт" / копилки.
-import { state, currentAccountOf, savingsAccountsOf, accountBalance, checkpointsSorted } from '../state.js';
+import { state, currentAccountOf, savingsAccountsOf, accountBalance, checkpointsSorted, displayMemberName } from '../state.js';
 import { t } from '../i18n.js';
 import { escapeHtml, formatMoney, formatDate } from '../utils.js';
 import { renderPeriodControl, attachPeriodControl, renderAccountBalanceChart, drawPieChart, renderExpenseTable, renderCheckpointBalanceChart } from '../charts.js';
@@ -44,7 +44,7 @@ function renderBankSubtab(member, account) {
   const balance = accountBalance(account);
   return `
     <div class="card balance-card">
-      <div class="label">${t('member_current_prefix')}${escapeHtml(member.name)}</div>
+      <div class="label">${t('member_current_prefix')}${escapeHtml(displayMemberName(member.name))}</div>
       <div class="amount money-value">${formatMoney(balance)}</div>
     </div>
 

@@ -1,5 +1,5 @@
 // Вкладка "Настройки": участники семьи, категории, экспорт, импорт из банка.
-import { state, accountLabel, avatarColor } from '../state.js';
+import { state, accountLabel, avatarColor, displayMemberName } from '../state.js';
 import { t } from '../i18n.js';
 import { escapeHtml, downloadCsv, withBusy } from '../utils.js';
 import { openModal, closeModal, renderIconPicker, wireIconPicker, confirmDialog } from '../modal.js';
@@ -11,10 +11,11 @@ import { icon } from '../icons.js';
 // ---- Участники семьи ----
 
 function renderMemberRow(m) {
+  const displayName = displayMemberName(m.name);
   return `
     <div class="member-row" data-id="${m.id}">
-      <span class="tab-avatar" style="background:${avatarColor(m.name)}">${escapeHtml(m.name.charAt(0).toUpperCase())}</span>
-      <span class="member-row-name">${escapeHtml(m.name)}</span>
+      <span class="tab-avatar" style="background:${avatarColor(m.name)}">${escapeHtml(displayName.charAt(0).toUpperCase())}</span>
+      <span class="member-row-name">${escapeHtml(displayName)}</span>
       <button class="icon-btn member-edit" title="${t('edit_title')}">${icon('pencil', { size: 17 })}</button>
       <button class="icon-btn member-delete" title="${t('delete_title')}">${icon('trash', { size: 17 })}</button>
     </div>`;

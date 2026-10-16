@@ -77,18 +77,6 @@ export function attachPeriodControl() {
   toEl.addEventListener('change', () => { chartCustomTo = toEl.value; renderCurrentTab(); });
 }
 
-function polarToCartesian(cx, cy, r, angleDeg) {
-  const rad = (angleDeg * Math.PI) / 180;
-  return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
-}
-
-function describeArc(cx, cy, r, startDeg, endDeg) {
-  const start = polarToCartesian(cx, cy, r, endDeg);
-  const end = polarToCartesian(cx, cy, r, startDeg);
-  const largeArc = endDeg - startDeg <= 180 ? '0' : '1';
-  return ['M', cx, cy, 'L', start.x, start.y, 'A', r, r, 0, largeArc, 0, end.x, end.y, 'Z'].join(' ');
-}
-
 const PIE_COLORS = ['var(--series-1)', 'var(--series-2)', 'var(--series-3)', 'var(--series-4)', 'var(--series-5)', 'var(--series-6)', 'var(--series-7)', 'var(--series-8)'];
 
 // Группирует расходы по категории. Операции без категории (например, только
@@ -135,23 +123,37 @@ export function drawPieChart(rootId, transactions) {
   const rest = entries.slice(7);
   if (rest.length) top.push({ label: '…', icon: '', amount: rest.reduce((s, e) => s + e.amount, 0) });
 
+  // Кольцевая диаграмма (donut) вместо сплошного пирога — сегменты рисуются
+  // обводкой окружности с dasharray/dashoffset, тем же приёмом, что и гейдж.
   const size = 220;
-  const r = 90;
+  const strokeWidth = 32;
+  const r = (size - strokeWidth) / 2;
   const cx = size / 2;
   const cy = size / 2;
-  let angle = -90;
+  const circumference = 2 * Math.PI * r;
+  let offset = 0;
 
   const slices = top.map((entry, i) => {
     const fraction = entry.amount / total;
-    const sweep = Math.min(fraction * 360, 359.99);
-    const path = describeArc(cx, cy, r, angle, angle + sweep);
-    angle += sweep;
-    return { path, color: colors[i % colors.length], value: entry.amount, label: entry.label, icon: entry.icon, fraction };
+    const segLen = fraction * circumference;
+    const dashoffset = -offset;
+    offset += segLen;
+    return {
+      dasharray: `${segLen.toFixed(2)} ${(circumference - segLen).toFixed(2)}`,
+      dashoffset,
+      color: colors[i % colors.length],
+      value: entry.amount,
+      label: entry.label,
+      icon: entry.icon,
+      fraction,
+    };
   });
 
   const svg = `
     <svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" role="img" aria-label="${t('analytics_pie_title')}">
-      ${slices.map((p, i) => `<path d="${p.path}" fill="${p.color}" stroke="var(--chart-surface)" stroke-width="2" data-idx="${i}" class="pie-slice"></path>`).join('')}
+      <g style="transform-origin:center; transform:rotate(-90deg)">
+        ${slices.map((p, i) => `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${p.color}" stroke-width="${strokeWidth}" stroke-dasharray="${p.dasharray}" stroke-dashoffset="${p.dashoffset}" data-idx="${i}" class="pie-slice"></circle>`).join('')}
+      </g>
     </svg>
   `;
 
@@ -165,7 +167,14 @@ export function drawPieChart(rootId, transactions) {
     </div>
   `;
 
-  root.innerHTML = `<div class="chart-svg-wrap">${svg}<div class="chart-tooltip" id="${rootId}-tooltip"></div></div>${legend}`;
+  root.innerHTML = `
+    <div class="chart-svg-wrap donut-wrap">
+      ${svg}
+      <div class="donut-center">
+        <div class="donut-total money-value">${formatMoney(total)}</div>
+      </div>
+      <div class="chart-tooltip" id="${rootId}-tooltip"></div>
+    </div>${legend}`;
 
   const tooltip = document.getElementById(`${rootId}-tooltip`);
   const showTip = (el, i, x, y) => {
@@ -422,16 +431,37 @@ export function renderCheckpointBalanceChart(rootId, account) {
   ]);
 }
 
+// Строит плавную кривую через все точки (Catmull-Rom → кубический Безье,
+// натяжение 1/6 — стандартный лёгкий способ сгладить линию без библиотек).
+function smoothPath(points) {
+  if (points.length < 2) return '';
+  let d = `M ${points[0].x.toFixed(1)} ${points[0].y.toFixed(1)}`;
+  for (let i = 0; i < points.length - 1; i++) {
+    const p0 = points[i === 0 ? 0 : i - 1];
+    const p1 = points[i];
+    const p2 = points[i + 1];
+    const p3 = points[i + 2 < points.length ? i + 2 : i + 1];
+    const c1x = p1.x + (p2.x - p0.x) / 6;
+    const c1y = p1.y + (p2.y - p0.y) / 6;
+    const c2x = p2.x - (p3.x - p1.x) / 6;
+    const c2y = p2.y - (p3.y - p1.y) / 6;
+    d += ` C ${c1x.toFixed(1)} ${c1y.toFixed(1)}, ${c2x.toFixed(1)} ${c2y.toFixed(1)}, ${p2.x.toFixed(1)} ${p2.y.toFixed(1)}`;
+  }
+  return d;
+}
+
 // Универсальная отрисовка линейного графика: dates — общая ось X,
 // lines — массив {label, values, color, width}, значения выровнены по dates.
+// Первая линия рисуется с мягкой градиентной заливкой под ней (как area-chart
+// в референсных finance-приложениях) — остальные линии тоньше, для контекста.
 export function drawLineChart(rootId, dates, lines) {
   const root = document.getElementById(rootId);
   if (!dates || dates.length < 2) { root.innerHTML = `<div class="chart-empty">${t('chart_no_data')}</div>`; return; }
 
   const width = 640;
   const height = 260;
-  const padL = 60;
-  const padR = 16;
+  const padL = 12;
+  const padR = 12;
   const padT = 16;
   const padB = 28;
   const plotW = width - padL - padR;
@@ -445,25 +475,23 @@ export function drawLineChart(rootId, dates, lines) {
   const xAt = (i) => padL + (i / (dates.length - 1)) * plotW;
   const yAt = (v) => padT + plotH - ((v - minV) / range) * plotH;
 
-  const pathFor = (values) => values.map((v, i) => `${i === 0 ? 'M' : 'L'} ${xAt(i).toFixed(1)} ${yAt(v).toFixed(1)}`).join(' ');
-
-  const steps = 4;
-  const gridLines = [];
-  for (let s = 0; s <= steps; s++) {
-    const v = minV + (range * s) / steps;
-    gridLines.push({ y: yAt(v), v });
-  }
+  const pointsFor = (values) => values.map((v, i) => ({ x: xAt(i), y: yAt(v) }));
+  const gradientId = `${rootId}-area-gradient`;
+  const firstLinePoints = pointsFor(lines[0].values);
+  const areaPath = `${smoothPath(firstLinePoints)} L ${xAt(dates.length - 1).toFixed(1)} ${(padT + plotH).toFixed(1)} L ${xAt(0).toFixed(1)} ${(padT + plotH).toFixed(1)} Z`;
 
   const svg = `
     <svg viewBox="0 0 ${width} ${height}" width="100%" height="${height}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="${t('chart_balance_title')}">
-      ${gridLines.map((g) => `
-        <line x1="${padL}" y1="${g.y.toFixed(1)}" x2="${width - padR}" y2="${g.y.toFixed(1)}" stroke="var(--chart-grid)" stroke-width="1" />
-        <text x="${padL - 8}" y="${(g.y + 3).toFixed(1)}" text-anchor="end" class="chart-axis-text money-value" fill="var(--chart-ink-muted)">${formatMoney(g.v)}</text>
-      `).join('')}
-      <line x1="${padL}" y1="${padT + plotH}" x2="${width - padR}" y2="${padT + plotH}" stroke="var(--chart-axis)" stroke-width="1" />
+      <defs>
+        <linearGradient id="${gradientId}" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="${lines[0].color}" stop-opacity="0.35" />
+          <stop offset="100%" stop-color="${lines[0].color}" stop-opacity="0" />
+        </linearGradient>
+      </defs>
+      <path d="${areaPath}" fill="url(#${gradientId})" stroke="none" />
       <text x="${padL}" y="${height - 8}" class="chart-axis-text" fill="var(--chart-ink-muted)" text-anchor="start">${formatDate(dates[0])}</text>
       <text x="${width - padR}" y="${height - 8}" class="chart-axis-text" fill="var(--chart-ink-muted)" text-anchor="end">${formatDate(dates[dates.length - 1])}</text>
-      ${lines.map((line) => `<path d="${pathFor(line.values)}" fill="none" stroke="${line.color}" stroke-width="${line.width}" stroke-linecap="round" stroke-linejoin="round" />`).join('')}
+      ${lines.map((line) => `<path d="${smoothPath(pointsFor(line.values))}" fill="none" stroke="${line.color}" stroke-width="${line.width}" stroke-linecap="round" stroke-linejoin="round" />`).join('')}
       <line id="${rootId}-crosshair" x1="0" y1="${padT}" x2="0" y2="${padT + plotH}" stroke="var(--chart-axis)" stroke-width="1" style="display:none;" />
       <rect id="${rootId}-hover-rect" x="${padL}" y="${padT}" width="${plotW}" height="${plotH}" fill="transparent" style="touch-action:none;" />
     </svg>

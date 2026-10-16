@@ -4,9 +4,23 @@
 // приложения, хотя и означает полный перезапрос всех таблиц на каждое
 // изменение (см. README/оценку для обсуждения компромиссов).
 import { Api } from './api.js';
-import { t } from './i18n.js';
+import { t, getLang } from './i18n.js';
 import { escapeHtml } from './utils.js';
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js';
+
+// Имена конкретных членов семьи — личные имена, их не переводит i18n.js.
+// Для отображения на других языках держим ручную транслитерацию: новый
+// участник без записи здесь просто покажется как есть (это нормально).
+const NAME_TRANSLATIONS = {
+  'Паша': { en: 'Pasha', uk: 'Паша', he: 'פאשה' },
+  'Настя': { en: 'Nastya', uk: 'Настя', he: 'נסטיה' },
+  'Эйтан': { en: 'Eitan', uk: 'Ейтан', he: 'איתן' },
+};
+
+export function displayMemberName(name) {
+  const entry = NAME_TRANSLATIONS[name];
+  return (entry && entry[getLang()]) || name;
+}
 
 export let state = { members: [], categories: [], accounts: [], transactions: [], checkpoints: [] };
 
@@ -92,6 +106,6 @@ export function accountLabel(accountId) {
   if (!acc) return '';
   if (acc.type === 'cash') return t('overview_cash_label');
   const member = state.members.find((m) => m.id === acc.member_id);
-  const memberName = member ? member.name : '';
+  const memberName = member ? displayMemberName(member.name) : '';
   return acc.type === 'current' ? memberName : `${memberName} — ${acc.name}`;
 }

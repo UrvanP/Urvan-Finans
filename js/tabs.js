@@ -2,7 +2,7 @@
 // после изменения" (refreshApp). Это единственное место, которое знает про
 // ВСЕ вкладки сразу — остальные модули дёргают refreshApp()/renderCurrentTab(),
 // не заботясь о том, кто сейчас активен.
-import { state, loadAll, avatarColor, cashAccount, currentAccountOf } from './state.js';
+import { state, loadAll, avatarColor, cashAccount, currentAccountOf, displayMemberName } from './state.js';
 import { t } from './i18n.js';
 import { escapeHtml } from './utils.js';
 import { icon } from './icons.js';
@@ -40,8 +40,9 @@ export function renderTabs() {
   nav.innerHTML = '';
   nav.appendChild(makeTabButton('overview', t('tab_overview'), `<span class="tab-icon">${icon('home')}</span>`));
   state.members.forEach((m) => {
-    const avatar = `<span class="tab-avatar" style="background:${avatarColor(m.name)}">${escapeHtml(m.name.charAt(0).toUpperCase())}</span>`;
-    nav.appendChild(makeTabButton('member:' + m.id, m.name, avatar));
+    const displayName = displayMemberName(m.name);
+    const avatar = `<span class="tab-avatar" style="background:${avatarColor(m.name)}">${escapeHtml(displayName.charAt(0).toUpperCase())}</span>`;
+    nav.appendChild(makeTabButton('member:' + m.id, displayName, avatar));
   });
   nav.appendChild(makeTabButton('settings', t('tab_settings'), `<span class="tab-icon">${icon('settings')}</span>`));
 }
@@ -85,9 +86,10 @@ function updateHeaderIdentity() {
   if (currentTab.startsWith('member:')) {
     const member = state.members.find((m) => m.id === currentTab.slice('member:'.length));
     if (member) {
-      badge.textContent = member.name.charAt(0).toUpperCase();
+      const displayName = displayMemberName(member.name);
+      badge.textContent = displayName.charAt(0).toUpperCase();
       badge.style.background = avatarColor(member.name);
-      nameEl.textContent = member.name;
+      nameEl.textContent = displayName;
       return;
     }
   }
@@ -107,8 +109,8 @@ export function openProfileSwitcher() {
     { key: 'overview', label: t('header_portfolio_label'), badgeHtml: icon('users', { size: 16 }), bg: null },
     ...state.members.map((m) => ({
       key: 'member:' + m.id,
-      label: m.name,
-      badgeHtml: escapeHtml(m.name.charAt(0).toUpperCase()),
+      label: displayMemberName(m.name),
+      badgeHtml: escapeHtml(displayMemberName(m.name).charAt(0).toUpperCase()),
       bg: avatarColor(m.name),
     })),
   ];
