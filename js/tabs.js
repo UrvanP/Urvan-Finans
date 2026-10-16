@@ -6,12 +6,19 @@ import { state, loadAll, avatarColor, cashAccount, currentAccountOf } from './st
 import { t } from './i18n.js';
 import { escapeHtml } from './utils.js';
 import { icon } from './icons.js';
+import { openModal, closeModal } from './modal.js';
 import { renderOverview, attachOverviewEvents } from './render/overview.js';
 import { renderMemberTab, attachMemberEvents, memberSubTab } from './render/member.js';
 import { renderSettingsTab, attachSettingsEvents } from './render/settings.js';
 import { openTransactionModal, openCheckpointModal } from './render/modalForms.js';
 
 export let currentTab = 'overview';
+
+export function switchToTab(tabKey) {
+  currentTab = tabKey;
+  renderTabs();
+  renderCurrentTab();
+}
 
 // Показывается один раз, пока идёт самая первая загрузка данных — вместо
 // пустого экрана. На повторные refreshApp() (после сохранения чего-либо)
@@ -43,11 +50,7 @@ function makeTabButton(tabKey, label, iconHtml) {
   const btn = document.createElement('button');
   btn.className = 'tab-btn' + (tabKey === currentTab ? ' active' : '');
   btn.innerHTML = `${iconHtml}<span class="tab-label">${escapeHtml(label)}</span>`;
-  btn.addEventListener('click', () => {
-    currentTab = tabKey;
-    renderTabs();
-    renderCurrentTab();
-  });
+  btn.addEventListener('click', () => switchToTab(tabKey));
   return btn;
 }
 
@@ -65,6 +68,68 @@ export function renderCurrentTab() {
     attachMemberEvents(memberId);
   }
   updateFab();
+  updateHeaderIdentity();
+}
+
+// ---------------------------------------------------------------
+// Переключатель профиля в шапке — показывает, чей сейчас вид открыт
+// (конкретный член семьи или "Портфолио" — вид на всю семью сразу),
+// клик открывает список для быстрой смены.
+// ---------------------------------------------------------------
+
+function updateHeaderIdentity() {
+  const badge = document.getElementById('header-badge');
+  const nameEl = document.getElementById('header-identity-name');
+  if (!badge || !nameEl) return;
+
+  if (currentTab.startsWith('member:')) {
+    const member = state.members.find((m) => m.id === currentTab.slice('member:'.length));
+    if (member) {
+      badge.textContent = member.name.charAt(0).toUpperCase();
+      badge.style.background = avatarColor(member.name);
+      nameEl.textContent = member.name;
+      return;
+    }
+  }
+  if (currentTab === 'overview') {
+    badge.innerHTML = icon('users', { size: 16 });
+    badge.style.background = '';
+    nameEl.textContent = t('header_portfolio_label');
+    return;
+  }
+  badge.textContent = '₪';
+  badge.style.background = '';
+  nameEl.textContent = t('app_title');
+}
+
+export function openProfileSwitcher() {
+  const items = [
+    { key: 'overview', label: t('header_portfolio_label'), badgeHtml: icon('users', { size: 16 }), bg: null },
+    ...state.members.map((m) => ({
+      key: 'member:' + m.id,
+      label: m.name,
+      badgeHtml: escapeHtml(m.name.charAt(0).toUpperCase()),
+      bg: avatarColor(m.name),
+    })),
+  ];
+
+  openModal(`
+    <h3>${t('profile_switch_title')}</h3>
+    <div class="profile-switch-list">
+      ${items.map((it) => `
+        <button type="button" class="profile-switch-item ${it.key === currentTab ? 'active' : ''}" data-key="${it.key}">
+          <span class="header-badge" style="${it.bg ? `background:${it.bg}` : ''}">${it.badgeHtml}</span>
+          <span>${escapeHtml(it.label)}</span>
+        </button>`).join('')}
+    </div>
+  `);
+
+  document.querySelectorAll('.profile-switch-item').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      closeModal();
+      switchToTab(btn.dataset.key);
+    });
+  });
 }
 
 // Перезагружает данные с сервера и перерисовывает текущую вкладку.

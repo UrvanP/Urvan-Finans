@@ -351,6 +351,32 @@ export function computeNetWorthSeries() {
   return { dates: allDates, networth, liquid: liquidSeries, savings: savingsSeries };
 }
 
+// Изменение общего капитала за последний месяц в процентах — для бейджа
+// рядом с гейджем ("растём"/"падаем", как в референсных finance-приложениях).
+// null, если данных месячной давности ещё нет (слишком новый аккаунт).
+export function computeNetWorthMonthlyChange() {
+  const series = computeNetWorthSeries();
+  if (!series || series.dates.length < 2) return null;
+
+  const monthAgo = new Date();
+  monthAgo.setMonth(monthAgo.getMonth() - 1);
+  const monthAgoStr = monthAgo.toISOString().slice(0, 10);
+
+  let baseIdx = -1;
+  for (let i = 0; i < series.dates.length; i++) {
+    if (series.dates[i] <= monthAgoStr) baseIdx = i;
+    else break;
+  }
+  if (baseIdx === -1) return null;
+
+  const base = series.networth[baseIdx];
+  const current = series.networth[series.networth.length - 1];
+  if (!base) return null;
+
+  const pct = ((current - base) / Math.abs(base)) * 100;
+  return { pct, direction: pct >= 0 ? 'up' : 'down' };
+}
+
 // Главный график на "Общем статусе": общий капитал (ликвидность + копилки)
 // одной жирной линией, плюс обе составляющие тоньше для контекста.
 export function renderNetWorthLineChart(rootId) {

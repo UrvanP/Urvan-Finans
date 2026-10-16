@@ -22,6 +22,10 @@ const PATHS = {
   trash: '<path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1L5 6"/><path d="M10 11v6M14 11v6"/>',
   check: '<path d="M20 6 9 17l-5-5"/>',
   search: '<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>',
+  users: '<circle cx="8" cy="9" r="4"/><circle cx="16" cy="10" r="3.2"/><path d="M2 20.5c0-3.6 2.7-6.2 6-6.2s6 2.6 6 6.2"/><path d="M14.3 14.6c2.8.5 4.7 2.7 4.7 5.9"/>',
+  chevronDown: '<path d="m6 9 6 6 6-6"/>',
+  arrowUp: '<path d="M12 19V5M5 12l7-7 7 7"/>',
+  arrowDown: '<path d="M12 5v14M19 12l-7 7-7-7"/>',
   x: '<path d="M18 6 6 18M6 6l12 12"/>',
 };
 

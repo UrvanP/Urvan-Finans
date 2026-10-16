@@ -46,7 +46,6 @@ export function cycleTheme() {
 
 export function applyStaticText() {
   document.title = t('app_title');
-  document.getElementById('app-title-text').textContent = t('app_title');
   const langBtn = document.getElementById('btn-lang');
   langBtn.title = t('lang_btn_title');
   langBtn.innerHTML = icon('globe');

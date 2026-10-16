@@ -3,7 +3,7 @@
 import { state, cashAccount, currentAccountOf, accountBalance, avatarColor } from '../state.js';
 import { t } from '../i18n.js';
 import { formatMoney, escapeHtml, animateCountUp } from '../utils.js';
-import { renderPeriodControl, attachPeriodControl, renderNetWorthLineChart, drawPieChart, renderExpenseTable, drawRadialGauge } from '../charts.js';
+import { renderPeriodControl, attachPeriodControl, renderNetWorthLineChart, drawPieChart, renderExpenseTable, drawRadialGauge, computeNetWorthMonthlyChange } from '../charts.js';
 import { renderTxSection, attachTxListEvents } from './transactions.js';
 import { openTransactionModal } from './modalForms.js';
 import { icon } from '../icons.js';
@@ -62,6 +62,7 @@ export function renderOverview() {
     ${renderMonthlySummaryBanner()}
     <div class="card gauge-card">
       <div id="overview-total-gauge"></div>
+      <div id="overview-gauge-change"></div>
     </div>
     <div class="summary-grid">
       ${memberBalances.map((x) => `
@@ -125,6 +126,18 @@ export function attachOverviewEvents() {
     label: t('overview_liquid_total'),
   });
   animateCountUp(document.getElementById('overview-total-gauge-value'), liquidTotal, formatMoney);
+
+  const change = computeNetWorthMonthlyChange();
+  const changeEl = document.getElementById('overview-gauge-change');
+  if (change) {
+    changeEl.innerHTML = `
+      <span class="change-badge ${change.direction}">
+        ${icon(change.direction === 'up' ? 'arrowUp' : 'arrowDown', { size: 14 })}
+        ${Math.abs(change.pct).toFixed(1)}%
+      </span>
+      <span class="change-period">${t('change_period_month')}</span>
+    `;
+  }
 
   if (!cash) return;
   document.getElementById('btn-add-cash-tx').addEventListener('click', () => openTransactionModal({ accountId: cash.id }));
