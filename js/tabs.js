@@ -5,6 +5,7 @@
 import { state, loadAll, avatarColor, cashAccount, currentAccountOf } from './state.js';
 import { t } from './i18n.js';
 import { escapeHtml } from './utils.js';
+import { icon } from './icons.js';
 import { renderOverview, attachOverviewEvents } from './render/overview.js';
 import { renderMemberTab, attachMemberEvents, memberSubTab } from './render/member.js';
 import { renderSettingsTab, attachSettingsEvents } from './render/settings.js';
@@ -12,15 +13,30 @@ import { openTransactionModal, openCheckpointModal } from './render/modalForms.j
 
 export let currentTab = 'overview';
 
+// Показывается один раз, пока идёт самая первая загрузка данных — вместо
+// пустого экрана. На повторные refreshApp() (после сохранения чего-либо)
+// не вызывается: там на экране уже есть актуальный контент.
+export function renderAppSkeleton() {
+  document.getElementById('app').innerHTML = `
+    <div class="card gauge-card"><div class="skeleton skeleton-circle"></div></div>
+    <div class="summary-grid">
+      <div class="card skeleton-card"><div class="skeleton skeleton-line" style="width:60%"></div><div class="skeleton skeleton-line" style="width:40%;height:22px;"></div></div>
+      <div class="card skeleton-card"><div class="skeleton skeleton-line" style="width:60%"></div><div class="skeleton skeleton-line" style="width:40%;height:22px;"></div></div>
+      <div class="card skeleton-card"><div class="skeleton skeleton-line" style="width:60%"></div><div class="skeleton skeleton-line" style="width:40%;height:22px;"></div></div>
+    </div>
+    <div class="card chart-card"><div class="skeleton" style="height:200px;"></div></div>
+  `;
+}
+
 export function renderTabs() {
   const nav = document.getElementById('tabs');
   nav.innerHTML = '';
-  nav.appendChild(makeTabButton('overview', t('tab_overview'), '<span class="tab-icon">🏠</span>'));
+  nav.appendChild(makeTabButton('overview', t('tab_overview'), `<span class="tab-icon">${icon('home')}</span>`));
   state.members.forEach((m) => {
     const avatar = `<span class="tab-avatar" style="background:${avatarColor(m.name)}">${escapeHtml(m.name.charAt(0).toUpperCase())}</span>`;
     nav.appendChild(makeTabButton('member:' + m.id, m.name, avatar));
   });
-  nav.appendChild(makeTabButton('settings', t('tab_settings'), '<span class="tab-icon">⚙️</span>'));
+  nav.appendChild(makeTabButton('settings', t('tab_settings'), `<span class="tab-icon">${icon('settings')}</span>`));
 }
 
 function makeTabButton(tabKey, label, iconHtml) {

@@ -40,6 +40,27 @@ export function downloadCsv(filename, rows) {
   URL.revokeObjectURL(url);
 }
 
+// Анимированный счётчик для "героического" числа (гейдж на Общем статусе) —
+// считает от 0 до targetValue вместо того, чтобы число просто появлялось
+// готовым. Уважает prefers-reduced-motion и не анимирует, если элемент уже
+// скрыт (например, вкладку успели переключить).
+export function animateCountUp(el, targetValue, formatFn, duration = 700) {
+  if (!el) return;
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    el.textContent = formatFn(targetValue);
+    return;
+  }
+  const start = performance.now();
+  function frame(now) {
+    if (!document.body.contains(el)) return;
+    const progress = Math.min(1, (now - start) / duration);
+    const eased = 1 - Math.pow(1 - progress, 3);
+    el.textContent = formatFn(targetValue * eased);
+    if (progress < 1) requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+}
+
 // Блокирует кнопку и подменяет текст на время выполнения async-операции —
 // защищает от повторной отправки формы при двойном клике. При ошибке кнопка
 // возвращается в исходное состояние (при успехе UI обычно сам перерисуется).

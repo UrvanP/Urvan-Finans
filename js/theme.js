@@ -2,12 +2,13 @@
 import { t, LANGUAGES, getLang, setLang } from './i18n.js';
 import { openModal, closeModal } from './modal.js';
 import { renderTabs, renderCurrentTab } from './tabs.js';
+import { icon } from './icons.js';
 
 let privacyMode = false;
 
 function applyPrivacyButton() {
   const btn = document.getElementById('btn-privacy');
-  btn.textContent = privacyMode ? '🙈' : '👁️';
+  btn.innerHTML = icon(privacyMode ? 'eye-off' : 'eye');
   btn.title = privacyMode ? t('privacy_show_title') : t('privacy_hide_title');
 }
 
@@ -30,7 +31,7 @@ export function setTheme(mode) {
 function applyThemeButton() {
   const btn = document.getElementById('btn-theme');
   const mode = getTheme();
-  btn.textContent = mode === 'dark' ? '🌙' : mode === 'light' ? '☀️' : '🌓';
+  btn.innerHTML = icon(mode === 'dark' ? 'moon' : mode === 'light' ? 'sun' : 'monitor');
   const modeLabel = mode === 'dark' ? t('theme_dark') : mode === 'light' ? t('theme_light') : t('theme_system');
   btn.title = `${t('theme_btn_title')}: ${modeLabel}`;
 }
@@ -46,7 +47,9 @@ export function cycleTheme() {
 export function applyStaticText() {
   document.title = t('app_title');
   document.getElementById('app-title-text').textContent = t('app_title');
-  document.getElementById('btn-lang').title = t('lang_btn_title');
+  const langBtn = document.getElementById('btn-lang');
+  langBtn.title = t('lang_btn_title');
+  langBtn.innerHTML = icon('globe');
   applyPrivacyButton();
   applyThemeButton();
 }

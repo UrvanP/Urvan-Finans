@@ -4,7 +4,7 @@
 // render/*.js) — здесь только провода между ними.
 import { getLang, setLang } from './i18n.js';
 import { getTheme, setTheme, applyStaticText, togglePrivacy, cycleTheme, openLanguageModal } from './theme.js';
-import { refreshApp } from './tabs.js';
+import { refreshApp, renderAppSkeleton } from './tabs.js';
 
 setLang(getLang());
 setTheme(getTheme());
@@ -12,6 +12,7 @@ applyStaticText();
 document.getElementById('btn-privacy').addEventListener('click', togglePrivacy);
 document.getElementById('btn-theme').addEventListener('click', cycleTheme);
 document.getElementById('btn-lang').addEventListener('click', openLanguageModal);
+renderAppSkeleton();
 refreshApp();
 
 // Регистрируем service worker, чтобы приложение можно было "установить"

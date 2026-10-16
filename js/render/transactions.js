@@ -4,6 +4,7 @@ import { t } from '../i18n.js';
 import { escapeHtml, formatMoney, formatDate } from '../utils.js';
 import { openTransactionModal } from './modalForms.js';
 import { confirmDialog } from '../modal.js';
+import { icon } from '../icons.js';
 import { refreshApp } from '../tabs.js';
 import { Api } from '../api.js';
 
@@ -64,8 +65,8 @@ function renderTxListRows(accountId) {
         </div>
         <div class="tx-amount money-value ${tx.type}">${sign} ${formatMoney(tx.amount)}</div>
         <div class="tx-actions">
-          <button class="icon-btn tx-edit" title="${t('edit_title')}">✏️</button>
-          <button class="icon-btn tx-delete" title="${t('delete_title')}">🗑️</button>
+          <button class="icon-btn tx-edit" title="${t('edit_title')}">${icon('pencil', { size: 17 })}</button>
+          <button class="icon-btn tx-delete" title="${t('delete_title')}">${icon('trash', { size: 17 })}</button>
         </div>
       </div>`;
   }).join('');

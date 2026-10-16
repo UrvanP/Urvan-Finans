@@ -375,11 +375,11 @@ export function drawLineChart(rootId, dates, lines) {
     <svg viewBox="0 0 ${width} ${height}" width="100%" height="${height}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="${t('chart_balance_title')}">
       ${gridLines.map((g) => `
         <line x1="${padL}" y1="${g.y.toFixed(1)}" x2="${width - padR}" y2="${g.y.toFixed(1)}" stroke="var(--chart-grid)" stroke-width="1" />
-        <text x="${padL - 8}" y="${(g.y + 3).toFixed(1)}" text-anchor="end" font-size="10" fill="var(--chart-ink-muted)" class="money-value">${formatMoney(g.v)}</text>
+        <text x="${padL - 8}" y="${(g.y + 3).toFixed(1)}" text-anchor="end" class="chart-axis-text money-value" fill="var(--chart-ink-muted)">${formatMoney(g.v)}</text>
       `).join('')}
       <line x1="${padL}" y1="${padT + plotH}" x2="${width - padR}" y2="${padT + plotH}" stroke="var(--chart-axis)" stroke-width="1" />
-      <text x="${padL}" y="${height - 8}" font-size="10" fill="var(--chart-ink-muted)" text-anchor="start">${formatDate(dates[0])}</text>
-      <text x="${width - padR}" y="${height - 8}" font-size="10" fill="var(--chart-ink-muted)" text-anchor="end">${formatDate(dates[dates.length - 1])}</text>
+      <text x="${padL}" y="${height - 8}" class="chart-axis-text" fill="var(--chart-ink-muted)" text-anchor="start">${formatDate(dates[0])}</text>
+      <text x="${width - padR}" y="${height - 8}" class="chart-axis-text" fill="var(--chart-ink-muted)" text-anchor="end">${formatDate(dates[dates.length - 1])}</text>
       ${lines.map((line) => `<path d="${pathFor(line.values)}" fill="none" stroke="${line.color}" stroke-width="${line.width}" stroke-linecap="round" stroke-linejoin="round" />`).join('')}
       <line id="${rootId}-crosshair" x1="0" y1="${padT}" x2="0" y2="${padT + plotH}" stroke="var(--chart-axis)" stroke-width="1" style="display:none;" />
       <rect id="${rootId}-hover-rect" x="${padL}" y="${padT}" width="${plotW}" height="${plotH}" fill="transparent" style="touch-action:none;" />
@@ -448,8 +448,8 @@ export function drawRadialGauge(rootId, { fraction, centerHtml, label, color = '
     <div class="gauge-wrap">
       <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="transform:rotate(-90deg)">
         <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--surface-2)" stroke-width="${strokeWidth}" />
-        <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${color}" stroke-width="${strokeWidth}"
-          stroke-linecap="round" stroke-dasharray="${circumference}" stroke-dashoffset="${offset}" />
+        <circle class="gauge-progress" cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${color}" stroke-width="${strokeWidth}"
+          stroke-linecap="round" stroke-dasharray="${circumference}" stroke-dashoffset="${circumference}" />
       </svg>
       <div class="gauge-center">
         <div class="gauge-value">${centerHtml}</div>
@@ -457,4 +457,9 @@ export function drawRadialGauge(rootId, { fraction, centerHtml, label, color = '
       </div>
     </div>
   `;
+
+  // Кольцо стартует пустым (stroke-dashoffset = длина окружности) и заполняется
+  // до нужной доли через CSS-переход — рисуется "с нуля", а не появляется готовым.
+  const progressCircle = root.querySelector('.gauge-progress');
+  requestAnimationFrame(() => { progressCircle.style.strokeDashoffset = offset; });
 }

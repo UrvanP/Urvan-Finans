@@ -6,6 +6,7 @@ import { renderPeriodControl, attachPeriodControl, renderAccountBalanceChart, dr
 import { renderTxSection, attachTxListEvents } from './transactions.js';
 import { openTransactionModal, openCheckpointModal, openNewSavingsModal, openRenameSavingsModal } from './modalForms.js';
 import { confirmDialog } from '../modal.js';
+import { icon } from '../icons.js';
 import { refreshApp, renderCurrentTab } from '../tabs.js';
 import { Api } from '../api.js';
 
@@ -92,8 +93,8 @@ function renderSavingsSubtab(account) {
           <div class="savings-delta">${deltaHtml}</div>
         </div>
         <div class="tx-actions">
-          <button class="icon-btn" id="btn-rename-savings" title="${t('edit_title')}">✏️</button>
-          <button class="icon-btn" id="btn-delete-savings" title="${t('delete_title')}">🗑️</button>
+          <button class="icon-btn" id="btn-rename-savings" title="${t('edit_title')}">${icon('pencil', { size: 17 })}</button>
+          <button class="icon-btn" id="btn-delete-savings" title="${t('delete_title')}">${icon('trash', { size: 17 })}</button>
         </div>
       </div>
     </div>
@@ -132,8 +133,8 @@ function renderCheckpointRows(cps) {
         </div>
         ${deltaHtml}
         <div class="tx-actions">
-          <button class="icon-btn cp-edit" title="${t('edit_title')}">✏️</button>
-          <button class="icon-btn cp-delete" title="${t('delete_title')}">🗑️</button>
+          <button class="icon-btn cp-edit" title="${t('edit_title')}">${icon('pencil', { size: 17 })}</button>
+          <button class="icon-btn cp-delete" title="${t('delete_title')}">${icon('trash', { size: 17 })}</button>
         </div>
       </div>`;
   }).join('');

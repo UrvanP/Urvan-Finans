@@ -2,10 +2,11 @@
 // графики и операции по общей наличности.
 import { state, cashAccount, currentAccountOf, accountBalance, avatarColor } from '../state.js';
 import { t } from '../i18n.js';
-import { formatMoney, escapeHtml } from '../utils.js';
+import { formatMoney, escapeHtml, animateCountUp } from '../utils.js';
 import { renderPeriodControl, attachPeriodControl, renderLiquidLineChart, drawPieChart, renderExpenseTable, drawRadialGauge } from '../charts.js';
 import { renderTxSection, attachTxListEvents } from './transactions.js';
 import { openTransactionModal } from './modalForms.js';
+import { icon } from '../icons.js';
 
 function computeLastMonthSummary() {
   const now = new Date();
@@ -40,7 +41,7 @@ function renderMonthlySummaryBanner() {
           ${t('summary_net_label')}: <span class="money-value">${formatMoney(summary.net)}</span>
         </div>
       </div>
-      <button class="summary-banner-close" id="summary-banner-close" title="${t('btn_close')}">✕</button>
+      <button class="summary-banner-close" id="summary-banner-close" title="${t('btn_close')}">${icon('x', { size: 16 })}</button>
     </div>
   `;
 }
@@ -120,9 +121,10 @@ export function attachOverviewEvents() {
     .reduce((s, m) => s + accountBalance(currentAccountOf(m.id)), 0) + accountBalance(cash);
   drawRadialGauge('overview-total-gauge', {
     fraction: liquidTotal / ((liquidTotal + savingsTotal) || 1),
-    centerHtml: `<span class="money-value">${formatMoney(liquidTotal)}</span>`,
+    centerHtml: `<span class="money-value" id="overview-total-gauge-value">${formatMoney(0)}</span>`,
     label: t('overview_liquid_total'),
   });
+  animateCountUp(document.getElementById('overview-total-gauge-value'), liquidTotal, formatMoney);
 
   if (!cash) return;
   document.getElementById('btn-add-cash-tx').addEventListener('click', () => openTransactionModal({ accountId: cash.id }));

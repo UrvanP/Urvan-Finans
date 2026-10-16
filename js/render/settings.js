@@ -6,6 +6,7 @@ import { openModal, closeModal, renderIconPicker, wireIconPicker, confirmDialog 
 import { refreshApp } from '../tabs.js';
 import { Api } from '../api.js';
 import { renderImportWidget, attachImportWidgetEvents } from './import.js';
+import { icon } from '../icons.js';
 
 // ---- Участники семьи ----
 
@@ -14,8 +15,8 @@ function renderMemberRow(m) {
     <div class="member-row" data-id="${m.id}">
       <span class="tab-avatar" style="background:${avatarColor(m.name)}">${escapeHtml(m.name.charAt(0).toUpperCase())}</span>
       <span class="member-row-name">${escapeHtml(m.name)}</span>
-      <button class="icon-btn member-edit" title="${t('edit_title')}">✏️</button>
-      <button class="icon-btn member-delete" title="${t('delete_title')}">🗑️</button>
+      <button class="icon-btn member-edit" title="${t('edit_title')}">${icon('pencil', { size: 17 })}</button>
+      <button class="icon-btn member-delete" title="${t('delete_title')}">${icon('trash', { size: 17 })}</button>
     </div>`;
 }
 
@@ -79,8 +80,8 @@ function catRow(c) {
     <div class="category-row" data-id="${c.id}">
       <span class="item-icon">${c.icon ? escapeHtml(c.icon) : ''}</span>
       <input type="text" value="${escapeHtml(c.name)}" class="cat-name-input" />
-      <button class="icon-btn cat-save" title="${t('save_name_title')}">💾</button>
-      <button class="icon-btn cat-delete" title="${t('delete_title')}">🗑️</button>
+      <button class="icon-btn cat-save" title="${t('save_name_title')}">${icon('check', { size: 17 })}</button>
+      <button class="icon-btn cat-delete" title="${t('delete_title')}">${icon('trash', { size: 17 })}</button>
     </div>`;
 }
 
