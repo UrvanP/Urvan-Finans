@@ -652,11 +652,17 @@ main#app {
   margin-top: 20px;
 }
 
-.category-row {
+.category-row,
+.member-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   margin-bottom: 8px;
+}
+
+.member-row-name {
+  flex: 1;
+  font-weight: 600;
 }
 
 .category-row input {

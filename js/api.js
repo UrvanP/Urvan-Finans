@@ -1,12 +1,36 @@
-// Все обращения к Supabase собраны в одном месте, чтобы app.js
+// Все обращения к Supabase собраны в одном месте, чтобы остальной код
 // не думал про SQL/запросы, а просто вызывал понятные функции.
+import { db } from './supabaseClient.js';
 
-const Api = {
+export const Api = {
   // ---------- members ----------
   async getMembers() {
     const { data, error } = await db.from('members').select('*').order('created_at');
     if (error) throw error;
     return data;
+  },
+
+  async addMember(name) {
+    const { data, error } = await db.from('members').insert({ name }).select().single();
+    if (error) throw error;
+    // У каждого члена семьи должен быть текущий счёт — создаём сразу,
+    // как это делает sql/schema.sql для начальных трёх членов семьи.
+    const { error: accErr } = await db
+      .from('accounts')
+      .insert({ member_id: data.id, type: 'current', name: 'Текущий счёт', initial_balance: 0 });
+    if (accErr) throw accErr;
+    return data;
+  },
+
+  async updateMember(id, fields) {
+    const { error } = await db.from('members').update(fields).eq('id', id);
+    if (error) throw error;
+  },
+
+  // Каскадно удаляет счета/операции/чекапы этого члена семьи (FK on delete cascade).
+  async deleteMember(id) {
+    const { error } = await db.from('members').delete().eq('id', id);
+    if (error) throw error;
   },
 
   // ---------- categories ----------

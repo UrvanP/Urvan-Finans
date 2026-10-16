@@ -1,0 +1,74 @@
+// Приватность (скрыть суммы), тема (светлая/тёмная/как в системе) и язык.
+import { t, LANGUAGES, getLang, setLang } from './i18n.js';
+import { openModal, closeModal } from './modal.js';
+import { renderTabs, renderCurrentTab } from './tabs.js';
+
+let privacyMode = false;
+
+function applyPrivacyButton() {
+  const btn = document.getElementById('btn-privacy');
+  btn.textContent = privacyMode ? '🙈' : '👁️';
+  btn.title = privacyMode ? t('privacy_show_title') : t('privacy_hide_title');
+}
+
+export function togglePrivacy() {
+  privacyMode = !privacyMode;
+  document.body.classList.toggle('privacy-mode', privacyMode);
+  applyPrivacyButton();
+}
+
+export function getTheme() {
+  return localStorage.getItem('theme') || 'system';
+}
+
+export function setTheme(mode) {
+  localStorage.setItem('theme', mode);
+  if (mode === 'system') document.documentElement.removeAttribute('data-theme');
+  else document.documentElement.setAttribute('data-theme', mode);
+}
+
+function applyThemeButton() {
+  const btn = document.getElementById('btn-theme');
+  const mode = getTheme();
+  btn.textContent = mode === 'dark' ? '🌙' : mode === 'light' ? '☀️' : '🌓';
+  const modeLabel = mode === 'dark' ? t('theme_dark') : mode === 'light' ? t('theme_light') : t('theme_system');
+  btn.title = `${t('theme_btn_title')}: ${modeLabel}`;
+}
+
+export function cycleTheme() {
+  const order = ['system', 'light', 'dark'];
+  const next = order[(order.indexOf(getTheme()) + 1) % order.length];
+  setTheme(next);
+  applyThemeButton();
+  renderCurrentTab();
+}
+
+export function applyStaticText() {
+  document.title = t('app_title');
+  document.getElementById('app-title-text').textContent = t('app_title');
+  document.getElementById('btn-lang').title = t('lang_btn_title');
+  applyPrivacyButton();
+  applyThemeButton();
+}
+
+export function openLanguageModal() {
+  const current = getLang();
+  const optionsHtml = LANGUAGES.map((l) => `
+    <button type="button" class="lang-option ${l.code === current ? 'active' : ''}" data-code="${l.code}">${l.label}</button>
+  `).join('');
+
+  openModal(`
+    <h3>${t('lang_picker_title')}</h3>
+    <div class="lang-option-list">${optionsHtml}</div>
+  `);
+
+  document.querySelectorAll('.lang-option').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      setLang(btn.dataset.code);
+      closeModal();
+      applyStaticText();
+      renderTabs();
+      renderCurrentTab();
+    });
+  });
+}

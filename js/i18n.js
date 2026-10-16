@@ -1,14 +1,14 @@
 // Многоязычность. Тексты интерфейса живут здесь; пользовательские данные
 // (имена, категории, комментарии) не переводятся — это не про них.
 
-const LANGUAGES = [
+export const LANGUAGES = [
   { code: 'ru', label: 'Русский' },
   { code: 'uk', label: 'Українська' },
   { code: 'he', label: 'עברית' },
   { code: 'en', label: 'English' },
 ];
 
-const RTL_LANGS = ['he'];
+export const RTL_LANGS = ['he'];
 
 const I18N = {
   ru: {
@@ -63,6 +63,8 @@ const I18N = {
     field_comment_optional: 'Комментарий (необязательно)',
     btn_cancel: 'Отмена',
     btn_save: 'Сохранить',
+    btn_delete: 'Удалить',
+    confirm_title: 'Подтверждение',
     err_amount_positive: 'Введите сумму больше нуля.',
     err_date_required: 'Укажите дату.',
     err_tx_save_failed: 'Не удалось сохранить операцию: ',
@@ -79,6 +81,9 @@ const I18N = {
     savings_rename_title: 'Переименовать копилку',
     err_name_empty: 'Название не может быть пустым.',
     err_savings_rename_failed: 'Не удалось переименовать копилку: ',
+    err_savings_delete_failed: 'Не удалось удалить копилку: ',
+    err_checkpoint_delete_failed: 'Не удалось удалить чекап: ',
+    err_tx_delete_failed: 'Не удалось удалить операцию: ',
 
     confirm_delete_savings: 'Удалить копилку? Вся история чекапов тоже удалится.',
     confirm_delete_transaction: 'Удалить операцию?',
@@ -103,6 +108,17 @@ const I18N = {
     err_category_add_failed: 'Не удалось добавить категорию: ',
     err_category_rename_failed: 'Не удалось переименовать категорию: ',
     err_category_delete_failed: 'Не удалось удалить категорию: ',
+
+    settings_members_title: 'Участники семьи',
+    add_member_btn: '+ Добавить участника',
+    member_name_placeholder: 'Например, Маша',
+    member_new_title: 'Новый участник семьи',
+    member_rename_title: 'Переименовать участника',
+    err_member_name_required: 'Введите имя.',
+    err_member_add_failed: 'Не удалось добавить участника: ',
+    err_member_rename_failed: 'Не удалось переименовать участника: ',
+    err_member_delete_failed: 'Не удалось удалить участника: ',
+    confirm_delete_member: 'Удалить участника? Все его счета и операции тоже удалятся безвозвратно.',
 
     tab_settings: 'Настройки',
     tab_analytics: 'Аналитика',
@@ -217,6 +233,8 @@ const I18N = {
     field_comment_optional: "Коментар (необов'язково)",
     btn_cancel: 'Скасувати',
     btn_save: 'Зберегти',
+    btn_delete: 'Видалити',
+    confirm_title: 'Підтвердження',
     err_amount_positive: 'Введіть суму більшу за нуль.',
     err_date_required: 'Вкажіть дату.',
     err_tx_save_failed: 'Не вдалося зберегти операцію: ',
@@ -233,6 +251,9 @@ const I18N = {
     savings_rename_title: 'Перейменувати скарбничку',
     err_name_empty: 'Назва не може бути порожньою.',
     err_savings_rename_failed: 'Не вдалося перейменувати скарбничку: ',
+    err_savings_delete_failed: 'Не вдалося видалити скарбничку: ',
+    err_checkpoint_delete_failed: 'Не вдалося видалити чекап: ',
+    err_tx_delete_failed: 'Не вдалося видалити операцію: ',
 
     confirm_delete_savings: 'Видалити скарбничку? Уся історія чекапів теж видалиться.',
     confirm_delete_transaction: 'Видалити операцію?',
@@ -257,6 +278,17 @@ const I18N = {
     err_category_add_failed: 'Не вдалося додати категорію: ',
     err_category_rename_failed: 'Не вдалося перейменувати категорію: ',
     err_category_delete_failed: 'Не вдалося видалити категорію: ',
+
+    settings_members_title: 'Учасники родини',
+    add_member_btn: '+ Додати учасника',
+    member_name_placeholder: 'Наприклад, Маша',
+    member_new_title: 'Новий учасник родини',
+    member_rename_title: 'Перейменувати учасника',
+    err_member_name_required: "Введіть ім'я.",
+    err_member_add_failed: 'Не вдалося додати учасника: ',
+    err_member_rename_failed: 'Не вдалося перейменувати учасника: ',
+    err_member_delete_failed: 'Не вдалося видалити учасника: ',
+    confirm_delete_member: 'Видалити учасника? Усі його рахунки та операції теж видаляться безповоротно.',
 
     tab_settings: 'Налаштування',
     tab_analytics: 'Аналітика',
@@ -371,6 +403,8 @@ const I18N = {
     field_comment_optional: 'הערה (לא חובה)',
     btn_cancel: 'ביטול',
     btn_save: 'שמירה',
+    btn_delete: 'מחיקה',
+    confirm_title: 'אישור',
     err_amount_positive: 'הזן סכום גדול מאפס.',
     err_date_required: 'בחר תאריך.',
     err_tx_save_failed: 'שמירת הפעולה נכשלה: ',
@@ -387,6 +421,9 @@ const I18N = {
     savings_rename_title: 'שינוי שם לקופת החיסכון',
     err_name_empty: 'השם לא יכול להיות ריק.',
     err_savings_rename_failed: 'שינוי השם נכשל: ',
+    err_savings_delete_failed: 'מחיקת קופת החיסכון נכשלה: ',
+    err_checkpoint_delete_failed: 'מחיקת הבדיקה נכשלה: ',
+    err_tx_delete_failed: 'מחיקת הפעולה נכשלה: ',
 
     confirm_delete_savings: 'למחוק את קופת החיסכון? כל היסטוריית הבדיקות תימחק גם היא.',
     confirm_delete_transaction: 'למחוק את הפעולה?',
@@ -411,6 +448,17 @@ const I18N = {
     err_category_add_failed: 'הוספת הקטגוריה נכשלה: ',
     err_category_rename_failed: 'שינוי שם הקטגוריה נכשל: ',
     err_category_delete_failed: 'מחיקת הקטגוריה נכשלה: ',
+
+    settings_members_title: 'בני המשפחה',
+    add_member_btn: '+ הוסף בן משפחה',
+    member_name_placeholder: 'לדוגמה, מאשה',
+    member_new_title: 'בן משפחה חדש',
+    member_rename_title: 'שינוי שם לבן משפחה',
+    err_member_name_required: 'הזן שם.',
+    err_member_add_failed: 'הוספת בן המשפחה נכשלה: ',
+    err_member_rename_failed: 'שינוי השם נכשל: ',
+    err_member_delete_failed: 'מחיקת בן המשפחה נכשלה: ',
+    confirm_delete_member: 'למחוק את בן המשפחה? כל החשבונות והפעולות שלו יימחקו גם הם, ללא אפשרות שחזור.',
 
     tab_settings: 'הגדרות',
     tab_analytics: 'ניתוח',
@@ -525,6 +573,8 @@ const I18N = {
     field_comment_optional: 'Comment (optional)',
     btn_cancel: 'Cancel',
     btn_save: 'Save',
+    btn_delete: 'Delete',
+    confirm_title: 'Please confirm',
     err_amount_positive: 'Enter an amount greater than zero.',
     err_date_required: 'Please pick a date.',
     err_tx_save_failed: 'Failed to save transaction: ',
@@ -541,6 +591,9 @@ const I18N = {
     savings_rename_title: 'Rename savings account',
     err_name_empty: 'Name cannot be empty.',
     err_savings_rename_failed: 'Failed to rename savings account: ',
+    err_savings_delete_failed: 'Failed to delete savings account: ',
+    err_checkpoint_delete_failed: 'Failed to delete checkpoint: ',
+    err_tx_delete_failed: 'Failed to delete transaction: ',
 
     confirm_delete_savings: 'Delete this savings account? Its whole checkpoint history will be deleted too.',
     confirm_delete_transaction: 'Delete this transaction?',
@@ -565,6 +618,17 @@ const I18N = {
     err_category_add_failed: 'Failed to add category: ',
     err_category_rename_failed: 'Failed to rename category: ',
     err_category_delete_failed: 'Failed to delete category: ',
+
+    settings_members_title: 'Family members',
+    add_member_btn: '+ Add family member',
+    member_name_placeholder: 'e.g. Maya',
+    member_new_title: 'New family member',
+    member_rename_title: 'Rename family member',
+    err_member_name_required: 'Enter a name.',
+    err_member_add_failed: 'Failed to add family member: ',
+    err_member_rename_failed: 'Failed to rename family member: ',
+    err_member_delete_failed: 'Failed to delete family member: ',
+    confirm_delete_member: 'Delete this family member? Their accounts and transactions will be permanently deleted too.',
 
     tab_settings: 'Settings',
     tab_analytics: 'Analytics',
@@ -628,20 +692,20 @@ const I18N = {
   },
 };
 
-function getLang() {
+export function getLang() {
   const saved = localStorage.getItem('lang');
   if (saved && I18N[saved]) return saved;
   return 'ru';
 }
 
-function setLang(code) {
+export function setLang(code) {
   if (!I18N[code]) return;
   localStorage.setItem('lang', code);
   document.documentElement.lang = code;
   document.documentElement.dir = RTL_LANGS.includes(code) ? 'rtl' : 'ltr';
 }
 
-function t(key) {
+export function t(key) {
   const lang = getLang();
   return (I18N[lang] && I18N[lang][key]) || I18N.ru[key] || key;
 }
