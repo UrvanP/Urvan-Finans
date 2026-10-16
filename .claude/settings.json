@@ -5,5 +5,19 @@
       "mcp__Claude_Browser__read_console_messages",
       "mcp__Claude_Browser__resize_window"
     ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "if": "Bash(git push*)",
+            "command": "echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PostToolUse\",\"additionalContext\":\"Reminder: a git push just completed on Urvan Finance. Before replying, launch the app-reviewer subagent to audit the freshly deployed app end-to-end (functionality, visual design, UX) and report a prioritized improvement list to the user.\"}}'"
+          }
+        ]
+      }
+    ]
   }
 }
