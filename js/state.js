@@ -22,7 +22,21 @@ export function displayMemberName(name) {
   return (entry && entry[getLang()]) || name;
 }
 
-export let state = { members: [], categories: [], accounts: [], transactions: [], checkpoints: [] };
+export let state = { members: [], categories: [], accounts: [], transactions: [], checkpoints: [], budgets: [] };
+
+// Таблицы, добавленные уже после первого релиза (budgets и т.п.), могут ещё
+// не существовать в чьей-то базе, пока не выполнена соответствующая
+// миграция — в этом случае Supabase вернёт ошибку "relation does not exist".
+// Без этой обёртки Promise.all в loadAll() упал бы целиком и сломал бы
+// приложение полностью до выполнения миграции, хотя сама функция не
+// обязательна для работы остального приложения.
+async function fetchOptional(apiCall, fallback) {
+  try {
+    return await apiCall();
+  } catch (err) {
+    return fallback;
+  }
+}
 
 export const ICON_CHOICES = ['💰', '🏦', '🐷', '💳', '🛒', '🍔', '🚗', '🏠', '💊', '🎓', '🎁', '✈️', '📱', '👗', '🎮', '📈', '👶', '⚡', '🧾', '☕', '🐾', '💼'];
 
@@ -63,14 +77,15 @@ export async function loadAll() {
     return false;
   }
   try {
-    const [members, categories, accounts, transactions, checkpoints] = await Promise.all([
+    const [members, categories, accounts, transactions, checkpoints, budgets] = await Promise.all([
       Api.getMembers(),
       Api.getCategories(),
       Api.getAccounts(),
       Api.getTransactions(),
       Api.getCheckpoints(),
+      fetchOptional(() => Api.getBudgets(), []),
     ]);
-    state = { members, categories, accounts, transactions, checkpoints };
+    state = { members, categories, accounts, transactions, checkpoints, budgets };
     return true;
   } catch (err) {
     showLoadError(err);
@@ -130,4 +145,38 @@ export function accountLabel(accountId) {
   const member = state.members.find((m) => m.id === acc.member_id);
   const memberName = member ? displayMemberName(member.name) : '';
   return acc.type === 'current' ? memberName : `${memberName} — ${acc.name}`;
+}
+
+// ---- Бюджеты: лимит повторяется каждый месяц сам собой, поэтому "сколько
+// потрачено" всегда считается за ТЕКУЩИЙ календарный месяц, а не за месяц
+// создания лимита. ----
+
+export function budgetFor(categoryId) {
+  return state.budgets.find((b) => b.category_id === categoryId) || null;
+}
+
+export function currentMonthSpentByCategory() {
+  const now = new Date();
+  const from = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
+  const to = new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString().slice(0, 10);
+  const map = {};
+  state.transactions.forEach((tx) => {
+    if (tx.type !== 'expense' || !tx.category_id) return;
+    if (tx.date < from || tx.date >= to) return;
+    map[tx.category_id] = (map[tx.category_id] || 0) + Number(tx.amount);
+  });
+  return map;
+}
+
+// Список категорий, где текущие траты за месяц превысили лимит — используется
+// и в Настройках (показать где именно превышено), и в баннере уведомлений.
+export function overBudgetCategories() {
+  const spent = currentMonthSpentByCategory();
+  return state.budgets
+    .map((b) => {
+      const category = state.categories.find((c) => c.id === b.category_id);
+      const spentAmount = spent[b.category_id] || 0;
+      return { budget: b, category, spent: spentAmount };
+    })
+    .filter((x) => x.category && x.spent > Number(x.budget.monthly_limit));
 }

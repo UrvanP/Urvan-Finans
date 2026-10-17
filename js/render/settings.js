@@ -1,7 +1,7 @@
 // Вкладка "Настройки": участники семьи, категории, экспорт, импорт из банка.
-import { state, accountLabel, avatarColor, displayMemberName } from '../state.js';
+import { state, accountLabel, avatarColor, displayMemberName, budgetFor, currentMonthSpentByCategory } from '../state.js';
 import { t } from '../i18n.js';
-import { escapeHtml, downloadCsv, withBusy } from '../utils.js';
+import { escapeHtml, downloadCsv, withBusy, formatMoney } from '../utils.js';
 import { openModal, closeModal, renderIconPicker, wireIconPicker, renderToggleGroup, wireToggleGroup, confirmDialog, alertDialog } from '../modal.js';
 import { refreshApp } from '../tabs.js';
 import { Api } from '../api.js';
@@ -86,9 +86,56 @@ function catRow(c) {
     </div>`;
 }
 
+// ---- Бюджеты: один повторяющийся месячный лимит на категорию расходов ----
+
+function budgetRow(c, spentMap) {
+  const b = budgetFor(c.id);
+  const spent = spentMap[c.id] || 0;
+  const over = b && spent > Number(b.monthly_limit);
+  const pct = b ? (spent / Number(b.monthly_limit)) * 100 : 0;
+  return `
+    <div class="budget-row" data-cat-id="${c.id}">
+      <div class="budget-row-top">
+        <span class="item-icon">${c.icon ? escapeHtml(c.icon) : ''}</span>
+        <span class="budget-row-name">${escapeHtml(c.name)}</span>
+        <input type="number" class="budget-limit-input" min="0" step="0.01" inputmode="decimal" placeholder="${t('budget_no_limit')}" value="${b ? b.monthly_limit : ''}" />
+        <button class="icon-btn budget-save" title="${t('save_name_title')}">${icon('check', { size: 17 })}</button>
+      </div>
+      ${b ? `
+        <div class="goal-progress">
+          <div class="expense-row-bar-track">
+            <div class="expense-row-bar" style="width:${Math.min(100, pct).toFixed(1)}%; background:${over ? 'var(--expense)' : 'var(--accent)'}"></div>
+          </div>
+          <div class="goal-progress-text">${formatMoney(spent)} / ${formatMoney(Number(b.monthly_limit))}${over ? ' · ' + t('budget_exceeded_label') : ''}</div>
+        </div>
+      ` : ''}
+    </div>`;
+}
+
+function attachBudgetEvents() {
+  document.querySelectorAll('#budgets-list .budget-row').forEach((row) => {
+    const categoryId = row.dataset.catId;
+    row.querySelector('.budget-save').addEventListener('click', async (e) => {
+      const input = row.querySelector('.budget-limit-input');
+      const value = input.value.trim();
+      const btn = e.currentTarget;
+      try {
+        await withBusy(btn, '…', async () => {
+          if (!value) await Api.deleteBudget(categoryId);
+          else await Api.setBudget(categoryId, parseFloat(value));
+        });
+        await refreshApp();
+      } catch (err) {
+        alertDialog(t('err_budget_save_failed') + err.message);
+      }
+    });
+  });
+}
+
 export function renderSettingsTab() {
   const income = state.categories.filter((c) => c.type === 'income');
   const expense = state.categories.filter((c) => c.type === 'expense');
+  const spentMap = currentMonthSpentByCategory();
 
   return `
     <div class="settings-section">
@@ -124,6 +171,12 @@ export function renderSettingsTab() {
     </div>
 
     <div class="settings-section">
+      <h2>${t('settings_budgets_title')}</h2>
+      <p class="hint-text">${t('settings_budgets_hint')}</p>
+      <div id="budgets-list">${expense.map((c) => budgetRow(c, spentMap)).join('') || `<div class="empty-hint">${t('empty_no_categories')}</div>`}</div>
+    </div>
+
+    <div class="settings-section">
       <h2>${t('settings_data_title')}</h2>
       <button class="btn btn-ghost btn-small" id="btn-export-tx" style="margin-inline-end:8px;">${t('export_transactions_btn')}</button>
       <button class="btn btn-ghost btn-small" id="btn-export-cp">${t('export_checkpoints_btn')}</button>
@@ -139,6 +192,7 @@ export function renderSettingsTab() {
 
 export function attachSettingsEvents() {
   attachMembersSectionEvents();
+  attachBudgetEvents();
 
   const getNewCatIcon = wireIconPicker('new-cat-icon-picker', null);
 

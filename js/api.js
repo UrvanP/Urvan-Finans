@@ -143,4 +143,29 @@ export const Api = {
     const { error } = await db.from('checkpoints').delete().eq('id', id);
     if (error) throw error;
   },
+
+  // ---------- budgets (месячный лимит на категорию расходов) ----------
+  async getBudgets() {
+    const { data, error } = await db.from('budgets').select('*');
+    if (error) throw error;
+    return data;
+  },
+
+  // Один лимит на категорию — upsert по category_id вместо отдельных
+  // add/update, чтобы вызывающему коду не нужно было знать, есть ли уже
+  // запись для этой категории.
+  async setBudget(category_id, monthly_limit) {
+    const { data, error } = await db
+      .from('budgets')
+      .upsert({ category_id, monthly_limit }, { onConflict: 'category_id' })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  async deleteBudget(category_id) {
+    const { error } = await db.from('budgets').delete().eq('category_id', category_id);
+    if (error) throw error;
+  },
 };
