@@ -364,6 +364,25 @@ main#app {
 }
 
 @media (max-width: 640px) {
+  /* 5 иконок в header-actions съедают почти всю ширину шапки на телефоне —
+     без этого имя профиля ("Портфолио", "Urvan Finance") обрезается до
+     нечитаемого "Порт…"/"Urva…". Сужаем сами кнопки, а не текст. */
+  .app-header {
+    padding: 12px 10px;
+    gap: 6px;
+  }
+
+  .header-actions {
+    gap: 0;
+  }
+
+  /* Составной селектор (а не просто .header-icon-btn) — иначе при равной
+     специфичности более поздний общий мобильный .icon-btn (увеличенный
+     тач-таргет для правки/удаления) перебивает это по порядку в каскаде. */
+  .icon-btn.header-icon-btn {
+    padding: 4px 4px;
+  }
+
   .tabs {
     position: fixed;
     bottom: 0;
@@ -397,7 +416,11 @@ main#app {
   }
 
   main#app {
-    padding-bottom: calc(var(--nav-height) + env(safe-area-inset-bottom, 0px) + 16px);
+    /* +86px = запас под плавающую кнопку (56px) и её собственный зазор от
+       панели вкладок (14px) + небольшой воздух — иначе на короткой странице
+       последний элемент (например, инлайн-кнопка "Добавить операцию")
+       оказывается ровно под FAB. */
+    padding-bottom: calc(var(--nav-height) + env(safe-area-inset-bottom, 0px) + 86px);
   }
 }
 
@@ -470,6 +493,10 @@ main#app {
     0 5px 12px rgba(0, 0, 0, 0.3);
 }
 
+.btn:hover {
+  filter: brightness(1.08);
+}
+
 .btn:active {
   transform: scale(0.98);
   box-shadow:
@@ -481,6 +508,10 @@ main#app {
   background: transparent;
   color: var(--accent);
   border: 1px solid var(--accent);
+}
+
+.btn-ghost:hover {
+  background: var(--accent-soft);
 }
 
 .btn-danger {
@@ -585,6 +616,11 @@ main#app {
 .change-badge.down {
   color: var(--expense);
   background: color-mix(in srgb, var(--expense) 18%, transparent);
+}
+
+.change-badge.flat {
+  color: var(--text-muted);
+  background: var(--surface-2);
 }
 
 .change-period {
@@ -789,6 +825,21 @@ main#app {
   background: var(--surface-2);
 }
 
+/* Тач-таргет ~28-32px у кнопок правки/удаления (операция, категория,
+   участник) мал для пальца — увеличиваем область клика на мобильном,
+   не меняя визуальный размер самой иконки. Должно идти ПОСЛЕ .icon-btn
+   выше — иначе при равной специфичности более поздний безусловный .icon-btn
+   в каскаде перебьёт это правило, даже если media-условие совпадает. */
+@media (max-width: 640px) {
+  .icon-btn {
+    padding: 9px 10px;
+  }
+
+  .tx-actions {
+    gap: 4px;
+  }
+}
+
 .empty-hint {
   color: var(--text-muted);
   font-size: var(--text-base);
@@ -896,6 +947,27 @@ main#app {
 .form-row select:focus {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
+}
+
+/* Та же кастомная стрелка, что и у select-фильтров графиков (см. ниже) —
+   без этого select в модалках (категория операции, участник для импорта)
+   остаётся с нативной стрелкой браузера, что выбивается из общего стиля. */
+.form-row select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 32px;
+  background-color: var(--surface);
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239c9b8f' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 16px;
+}
+
+:root[dir="rtl"] .form-row select {
+  padding-right: 12px;
+  padding-left: 32px;
+  background-position: left 10px center;
 }
 
 .type-toggle {

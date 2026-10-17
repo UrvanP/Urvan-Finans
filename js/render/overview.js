@@ -130,9 +130,10 @@ export function attachOverviewEvents() {
   const change = computeNetWorthMonthlyChange();
   const changeEl = document.getElementById('overview-gauge-change');
   if (change) {
+    const arrowIcon = change.direction === 'up' ? 'arrowUp' : change.direction === 'down' ? 'arrowDown' : null;
     changeEl.innerHTML = `
       <span class="change-badge ${change.direction}">
-        ${icon(change.direction === 'up' ? 'arrowUp' : 'arrowDown', { size: 14 })}
+        ${arrowIcon ? icon(arrowIcon, { size: 14 }) : ''}
         ${Math.abs(change.pct).toFixed(1)}%
       </span>
       <span class="change-period">${t('change_period_month')}</span>

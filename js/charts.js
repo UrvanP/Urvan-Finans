@@ -207,7 +207,9 @@ export function drawPieChart(rootId, transactions) {
 export function renderExpenseTable(rootId, transactions) {
   const root = document.getElementById(rootId);
   const entries = groupExpenses(transactions);
-  if (!entries.length) { root.innerHTML = `<div class="chart-empty">${t('chart_no_data')}</div>`; return; }
+  // Пусто, а не вторая копия "недостаточно данных" — donut рядом (drawPieChart)
+  // уже показывает это сообщение для тех же данных.
+  if (!entries.length) { root.innerHTML = ''; return; }
 
   const total = entries.reduce((s, e) => s + e.amount, 0);
   const colors = PIE_COLORS;
@@ -405,7 +407,8 @@ export function computeNetWorthMonthlyChange() {
   if (!base) return null;
 
   const pct = ((current - base) / Math.abs(base)) * 100;
-  return { pct, direction: pct >= 0 ? 'up' : 'down' };
+  const direction = pct > 0 ? 'up' : pct < 0 ? 'down' : 'flat';
+  return { pct, direction };
 }
 
 // Главный график на "Общем статусе": только ликвидные деньги (без копилок —
