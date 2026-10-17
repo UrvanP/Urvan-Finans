@@ -1,6 +1,6 @@
 // Модалки создания/редактирования: операция, копилка (создание/переименование),
 // чекап копилки.
-import { state, CURRENCIES } from '../state.js';
+import { state, CURRENCIES, accountLabel } from '../state.js';
 import { t } from '../i18n.js';
 import { escapeHtml, todayStr, withBusy } from '../utils.js';
 import { openModal, closeModal, renderIconPicker, wireIconPicker, renderToggleGroup, wireToggleGroup, alertDialog, confirmDialog } from '../modal.js';
@@ -270,6 +270,122 @@ export function openCheckpointModal({ accountId, checkpoint }) {
       await refreshApp();
     } catch (err) {
       alertDialog(t('err_checkpoint_save_failed') + err.message);
+    }
+  });
+}
+
+// ---- Повторяющиеся операции (подписки, зарплата и т.п.) ----
+
+export function openRecurringModal({ rule } = {}) {
+  const isEdit = !!rule;
+  let type = rule ? rule.type : 'expense';
+
+  const accountOptions = () => state.accounts
+    .filter((a) => a.type === 'current' || a.type === 'cash')
+    .map((a) => `<option value="${a.id}" ${rule && rule.account_id === a.id ? 'selected' : ''}>${escapeHtml(accountLabel(a.id))}</option>`)
+    .join('');
+
+  const categoryOptions = (ty) => {
+    const options = state.categories
+      .filter((c) => c.type === ty)
+      .map((c) => `<option value="${c.id}" ${rule && rule.category_id === c.id ? 'selected' : ''}>${c.icon ? escapeHtml(c.icon) + ' ' : ''}${escapeHtml(c.name)}</option>`)
+      .join('');
+    return `<option value="">${t('no_category_option')}</option>${options}`;
+  };
+
+  openModal(`
+    <h3>${isEdit ? t('recurring_edit_title') : t('recurring_new_title')}</h3>
+    <div class="form-row">
+      <label>${t('field_account')}</label>
+      <select id="rec-account">${accountOptions()}</select>
+    </div>
+    <div class="form-row">
+      <label>${t('field_type')}</label>
+      ${renderToggleGroup('rec-type-toggle', [
+        { value: 'expense', label: t('type_expense') },
+        { value: 'income', label: t('type_income') },
+      ], type)}
+    </div>
+    <div class="form-row">
+      <label>${t('field_category')}</label>
+      <select id="rec-category">${categoryOptions(type)}</select>
+    </div>
+    <div class="form-row">
+      <label>${t('field_amount')}</label>
+      <input type="number" id="rec-amount" min="0" step="0.01" inputmode="decimal" value="${rule ? rule.amount : ''}" />
+    </div>
+    <div class="form-row">
+      <label>${t('field_frequency')}</label>
+      ${renderToggleGroup('rec-freq-toggle', [
+        { value: 'monthly', label: t('frequency_monthly') },
+        { value: 'weekly', label: t('frequency_weekly') },
+      ], rule ? rule.frequency : 'monthly')}
+    </div>
+    <div class="form-row">
+      <label>${t('field_next_date')}</label>
+      <input type="date" id="rec-next-date" value="${rule ? rule.next_date : todayStr()}" />
+    </div>
+    <div class="form-row">
+      <label>${t('field_comment_optional')}</label>
+      <input type="text" id="rec-comment" value="${rule && rule.comment ? escapeHtml(rule.comment) : ''}" />
+    </div>
+    <div class="modal-actions">
+      ${isEdit ? `<button class="btn btn-danger" id="rec-delete">${t('btn_delete')}</button>` : '<span></span>'}
+      <div style="display:flex; gap:10px;">
+        <button class="btn btn-ghost" id="rec-cancel">${t('btn_cancel')}</button>
+        <button class="btn" id="rec-save">${isEdit ? t('btn_save') : t('btn_create')}</button>
+      </div>
+    </div>
+  `);
+
+  let frequency = rule ? rule.frequency : 'monthly';
+  wireToggleGroup('rec-type-toggle', (value) => {
+    type = value;
+    document.getElementById('rec-category').innerHTML = categoryOptions(type);
+  });
+  wireToggleGroup('rec-freq-toggle', (value) => { frequency = value; });
+
+  document.getElementById('rec-cancel').addEventListener('click', closeModal);
+
+  const deleteBtn = document.getElementById('rec-delete');
+  if (deleteBtn) {
+    deleteBtn.addEventListener('click', async () => {
+      if (!(await confirmDialog(t('confirm_delete_recurring')))) return;
+      deleteBtn.disabled = true;
+      try {
+        await Api.deleteRecurringTransaction(rule.id);
+        closeModal();
+        await refreshApp();
+      } catch (err) {
+        deleteBtn.disabled = false;
+        alertDialog(t('err_recurring_delete_failed') + err.message);
+      }
+    });
+  }
+
+  document.getElementById('rec-save').addEventListener('click', async (e) => {
+    const account_id = document.getElementById('rec-account').value;
+    const category_id = document.getElementById('rec-category').value || null;
+    const amount = parseFloat(document.getElementById('rec-amount').value);
+    const next_date = document.getElementById('rec-next-date').value;
+    const comment = document.getElementById('rec-comment').value.trim();
+
+    if (!account_id) { alertDialog(t('err_account_required')); return; }
+    if (!amount || amount <= 0) { alertDialog(t('err_amount_positive')); return; }
+    if (!next_date) { alertDialog(t('err_date_required')); return; }
+
+    try {
+      await withBusy(e.currentTarget, (isEdit ? t('btn_save') : t('btn_create')) + '…', async () => {
+        if (isEdit) {
+          await Api.updateRecurringTransaction(rule.id, { account_id, category_id, type, amount, frequency, next_date, comment });
+        } else {
+          await Api.addRecurringTransaction({ account_id, category_id, type, amount, frequency, next_date, comment });
+        }
+      });
+      closeModal();
+      await refreshApp();
+    } catch (err) {
+      alertDialog(t('err_recurring_save_failed') + err.message);
     }
   });
 }

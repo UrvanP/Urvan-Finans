@@ -168,4 +168,31 @@ export const Api = {
     const { error } = await db.from('budgets').delete().eq('category_id', category_id);
     if (error) throw error;
   },
+
+  // ---------- recurring_transactions (подписки, зарплата и т.п.) ----------
+  async getRecurringTransactions() {
+    const { data, error } = await db.from('recurring_transactions').select('*').order('next_date');
+    if (error) throw error;
+    return data;
+  },
+
+  async addRecurringTransaction({ account_id, category_id, type, amount, comment, frequency, next_date }) {
+    const { data, error } = await db
+      .from('recurring_transactions')
+      .insert({ account_id, category_id, type, amount, comment: comment || null, frequency, next_date })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  async updateRecurringTransaction(id, fields) {
+    const { error } = await db.from('recurring_transactions').update(fields).eq('id', id);
+    if (error) throw error;
+  },
+
+  async deleteRecurringTransaction(id) {
+    const { error } = await db.from('recurring_transactions').delete().eq('id', id);
+    if (error) throw error;
+  },
 };

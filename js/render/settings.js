@@ -1,11 +1,12 @@
 // Вкладка "Настройки": участники семьи, категории, экспорт, импорт из банка.
 import { state, accountLabel, avatarColor, displayMemberName, budgetFor, currentMonthSpentByCategory } from '../state.js';
 import { t } from '../i18n.js';
-import { escapeHtml, downloadCsv, withBusy, formatMoney } from '../utils.js';
+import { escapeHtml, downloadCsv, withBusy, formatMoney, formatDate } from '../utils.js';
 import { openModal, closeModal, renderIconPicker, wireIconPicker, renderToggleGroup, wireToggleGroup, confirmDialog, alertDialog } from '../modal.js';
 import { refreshApp } from '../tabs.js';
 import { Api } from '../api.js';
 import { renderImportWidget, attachImportWidgetEvents } from './import.js';
+import { openRecurringModal } from './modalForms.js';
 import { icon } from '../icons.js';
 
 // ---- Участники семьи ----
@@ -132,6 +133,37 @@ function attachBudgetEvents() {
   });
 }
 
+// ---- Повторяющиеся операции ----
+
+function recurringRow(r) {
+  const cat = state.categories.find((c) => c.id === r.category_id);
+  const catLabel = cat ? (cat.icon ? escapeHtml(cat.icon) + ' ' : '') + escapeHtml(cat.name) : t('no_category_label');
+  const freqLabel = r.frequency === 'weekly' ? t('frequency_weekly') : t('frequency_monthly');
+  const sign = r.type === 'income' ? '+' : '−';
+  return `
+    <div class="tx-card" data-id="${r.id}">
+      <div class="tx-info">
+        <span class="tx-category">${catLabel} · ${escapeHtml(accountLabel(r.account_id))}</span>
+        <span class="tx-meta">${freqLabel} · ${t('recurring_next_label')} ${formatDate(r.next_date)}</span>
+      </div>
+      <div class="tx-amount money-value ${r.type}">${sign} ${formatMoney(r.amount)}</div>
+      <div class="tx-actions">
+        <button class="icon-btn rec-edit" title="${t('edit_title')}">${icon('pencil', { size: 17 })}</button>
+      </div>
+    </div>`;
+}
+
+function attachRecurringEvents() {
+  document.getElementById('btn-add-recurring').addEventListener('click', () => openRecurringModal());
+  document.querySelectorAll('#recurring-list .tx-card').forEach((row) => {
+    const id = row.dataset.id;
+    row.querySelector('.rec-edit').addEventListener('click', () => {
+      const rule = state.recurring.find((r) => r.id === id);
+      openRecurringModal({ rule });
+    });
+  });
+}
+
 export function renderSettingsTab() {
   const income = state.categories.filter((c) => c.type === 'income');
   const expense = state.categories.filter((c) => c.type === 'expense');
@@ -177,6 +209,13 @@ export function renderSettingsTab() {
     </div>
 
     <div class="settings-section">
+      <h2>${t('settings_recurring_title')}</h2>
+      <p class="hint-text">${t('settings_recurring_hint')}</p>
+      <div id="recurring-list">${state.recurring.map(recurringRow).join('') || `<div class="empty-hint">${t('empty_no_recurring')}</div>`}</div>
+      <button class="btn btn-ghost btn-small" id="btn-add-recurring">${t('add_recurring_btn')}</button>
+    </div>
+
+    <div class="settings-section">
       <h2>${t('settings_data_title')}</h2>
       <button class="btn btn-ghost btn-small" id="btn-export-tx" style="margin-inline-end:8px;">${t('export_transactions_btn')}</button>
       <button class="btn btn-ghost btn-small" id="btn-export-cp">${t('export_checkpoints_btn')}</button>
@@ -193,6 +232,7 @@ export function renderSettingsTab() {
 export function attachSettingsEvents() {
   attachMembersSectionEvents();
   attachBudgetEvents();
+  attachRecurringEvents();
 
   const getNewCatIcon = wireIconPicker('new-cat-icon-picker', null);
 

@@ -22,7 +22,7 @@ export function displayMemberName(name) {
   return (entry && entry[getLang()]) || name;
 }
 
-export let state = { members: [], categories: [], accounts: [], transactions: [], checkpoints: [], budgets: [] };
+export let state = { members: [], categories: [], accounts: [], transactions: [], checkpoints: [], budgets: [], recurring: [] };
 
 // Таблицы, добавленные уже после первого релиза (budgets и т.п.), могут ещё
 // не существовать в чьей-то базе, пока не выполнена соответствующая
@@ -77,15 +77,16 @@ export async function loadAll() {
     return false;
   }
   try {
-    const [members, categories, accounts, transactions, checkpoints, budgets] = await Promise.all([
+    const [members, categories, accounts, transactions, checkpoints, budgets, recurring] = await Promise.all([
       Api.getMembers(),
       Api.getCategories(),
       Api.getAccounts(),
       Api.getTransactions(),
       Api.getCheckpoints(),
       fetchOptional(() => Api.getBudgets(), []),
+      fetchOptional(() => Api.getRecurringTransactions(), []),
     ]);
-    state = { members, categories, accounts, transactions, checkpoints, budgets };
+    state = { members, categories, accounts, transactions, checkpoints, budgets, recurring };
     return true;
   } catch (err) {
     showLoadError(err);
@@ -179,4 +180,20 @@ export function overBudgetCategories() {
       return { budget: b, category, spent: spentAmount };
     })
     .filter((x) => x.category && x.spent > Number(x.budget.monthly_limit));
+}
+
+// ---- Повторяющиеся операции: next_date — когда наступает следующая, не
+// создаётся сама по себе, пользователь подтверждает (или пропускает) в
+// баннере уведомлений на Общем статусе. ----
+
+export function dueRecurringTransactions() {
+  const today = new Date().toISOString().slice(0, 10);
+  return state.recurring.filter((r) => r.active && r.next_date <= today);
+}
+
+export function advanceRecurringDate(dateStr, frequency) {
+  const d = new Date(dateStr);
+  if (frequency === 'weekly') d.setDate(d.getDate() + 7);
+  else d.setMonth(d.getMonth() + 1);
+  return d.toISOString().slice(0, 10);
 }
