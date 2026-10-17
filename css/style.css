@@ -136,6 +136,12 @@ a:focus-visible {
   border-radius: var(--radius-sm);
 }
 
+html {
+  /* Базовый размер чуть больше стандартных 16px — вся шкала токенов
+     (--text-*, заданная в rem) масштабируется вместе с этим значением. */
+  font-size: 17px;
+}
+
 body {
   margin: 0;
   font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
@@ -173,19 +179,33 @@ body {
   margin: 0;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   background: transparent;
   border: none;
-  padding: 2px;
+  padding: 4px 8px 4px 2px;
+  border-radius: 999px;
   cursor: pointer;
   font-family: inherit;
   min-width: 0;
+  transition: background 0.15s ease;
+}
+
+/* Явный намёк, что это кнопка-переключатель, а не просто заголовок —
+   лёгкий фон при наведении/фокусе + всегда видимый шеврон. */
+.header-identity:hover,
+.header-identity:focus-visible {
+  background: var(--surface-2);
 }
 
 .header-identity-name {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.header-chevron {
+  color: var(--text-muted);
+  flex-shrink: 0;
 }
 
 .header-actions {
@@ -616,9 +636,9 @@ main#app {
   margin-top: 4px;
 }
 
-.donut-wrap {
+.chart-svg-wrap.donut-wrap {
   position: relative;
-  width: 220px;
+  width: 160px;
   max-width: 100%;
   margin: 0 auto;
 }
@@ -1250,6 +1270,32 @@ main#app {
   flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 14px;
+}
+
+.chart-filter-row select,
+.filter-bar select {
+  /* appearance:none убирает нативную стрелку/рамку ОС — рисуем свою,
+     чтобы селект не выбивался из общего стиля приложения. */
+  appearance: none;
+  -webkit-appearance: none;
+  padding: 8px 32px 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background-color: var(--surface);
+  color: var(--text);
+  font-size: var(--text-sm);
+  font-family: inherit;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239c9b8f' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  background-size: 16px;
+}
+
+:root[dir="rtl"] .chart-filter-row select,
+:root[dir="rtl"] .filter-bar select {
+  padding: 8px 12px 8px 32px;
+  background-position: left 8px center;
 }
 
 .chart-svg-wrap {
