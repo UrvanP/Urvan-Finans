@@ -1322,7 +1322,30 @@ main#app {
   width: 10px;
   height: 10px;
   border-radius: 50%;
+  border: 1.5px solid transparent;
+  box-sizing: border-box;
   flex-shrink: 0;
+}
+
+.legend-toggle {
+  border: none;
+  background: none;
+  padding: 3px 6px;
+  margin: -3px -6px;
+  border-radius: var(--radius-sm);
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  transition: opacity 0.15s ease, background 0.15s ease;
+}
+
+.legend-toggle:hover {
+  background: var(--surface-2);
+}
+
+.legend-toggle.inactive {
+  opacity: 0.45;
+  text-decoration: line-through;
 }
 
 .chart-tooltip {

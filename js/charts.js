@@ -3,7 +3,7 @@
 // индикатора. Показываются прямо на нужной вкладке, а не в отдельном разделе.
 // Самописный inline SVG вместо библиотеки — оправдано для такого
 // небольшого проекта без сборки.
-import { state, checkpointsSorted } from './state.js';
+import { state, checkpointsSorted, avatarColor, displayMemberName } from './state.js';
 import { t } from './i18n.js';
 import { escapeHtml, formatMoney, formatDate } from './utils.js';
 import { renderCurrentTab } from './tabs.js';
@@ -287,6 +287,28 @@ function computeLiquidSeries() {
   return series;
 }
 
+// Разбивает общий ликвидный ряд (computeLiquidSeries) по владельцу: текущий
+// счёт каждого члена семьи — отдельная линия, общая наличность — отдельная,
+// плюс сумма всех как "Всего". Копилки/пенсия сюда сознательно не входят —
+// пользователь просил не смешивать их с ликвидными деньгами в одном графике.
+export function computeLiquidByMemberSeries() {
+  const liquid = computeLiquidSeries();
+  if (!liquid) return null;
+
+  const cash = state.accounts.find((a) => a.type === 'cash');
+  const byMember = state.members.map((m) => {
+    const acc = state.accounts.find((a) => a.member_id === m.id && a.type === 'current');
+    return { member: m, values: acc ? liquid.byAccount[acc.id] : liquid.dates.map(() => 0) };
+  });
+
+  return {
+    dates: liquid.dates,
+    total: liquid.total,
+    byMember,
+    cash: cash ? liquid.byAccount[cash.id] : null,
+  };
+}
+
 // Баланс одного текущего/наличного счёта во времени.
 export function computeSingleAccountSeries(account) {
   const txs = state.transactions
@@ -386,10 +408,12 @@ export function computeNetWorthMonthlyChange() {
   return { pct, direction: pct >= 0 ? 'up' : 'down' };
 }
 
-// Главный график на "Общем статусе": общий капитал (ликвидность + копилки)
-// одной жирной линией, плюс обе составляющие тоньше для контекста.
+// Главный график на "Общем статусе": только ликвидные деньги (без копилок —
+// те отдельно, по просьбе пользователя). "Всего" жирной линией, плюс разрез
+// по каждому члену семьи и по общей наличности — каждую линию можно скрыть
+// кликом по легенде (см. drawLineChart).
 export function renderNetWorthLineChart(rootId) {
-  const series = computeNetWorthSeries();
+  const series = computeLiquidByMemberSeries();
   if (!series) { document.getElementById(rootId).innerHTML = `<div class="chart-empty">${t('chart_no_data')}</div>`; return; }
 
   const range = periodIndexRange(series.dates);
@@ -397,10 +421,17 @@ export function renderNetWorthLineChart(rootId) {
 
   const slice = (arr) => arr.slice(range.start, range.end + 1);
   const lines = [
-    { label: t('analytics_total_line_label'), values: slice(series.networth), color: 'var(--accent)', width: 3 },
-    { label: t('analytics_liquid_line_label'), values: slice(series.liquid), color: 'var(--series-2)', width: 2 },
-    { label: t('analytics_savings_line_label'), values: slice(series.savings), color: 'var(--series-3)', width: 2 },
+    { label: t('analytics_total_line_label'), values: slice(series.total), color: 'var(--accent)', width: 3 },
+    ...series.byMember.map((entry) => ({
+      label: displayMemberName(entry.member.name),
+      values: slice(entry.values),
+      color: avatarColor(entry.member.name),
+      width: 2,
+    })),
   ];
+  if (series.cash) {
+    lines.push({ label: t('overview_cash_label'), values: slice(series.cash), color: 'var(--accent-cash)', width: 2 });
+  }
 
   drawLineChart(rootId, slice(series.dates), lines);
 }
@@ -450,13 +481,51 @@ function smoothPath(points) {
   return d;
 }
 
+// Какие линии скрыты по клику на легенду, по id графика — переживает
+// перерисовку одного и того же графика (но не нужен между разными графиками,
+// поэтому просто ключ по rootId, без привязки к конкретному набору данных).
+const lineHiddenState = new Map();
+
 // Универсальная отрисовка линейного графика: dates — общая ось X,
 // lines — массив {label, values, color, width}, значения выровнены по dates.
-// Первая линия рисуется с мягкой градиентной заливкой под ней (как area-chart
-// в референсных finance-приложениях) — остальные линии тоньше, для контекста.
+// Первая ВИДИМАЯ линия рисуется с мягкой градиентной заливкой под ней (как
+// area-chart в референсных finance-приложениях) — остальные линии тоньше,
+// для контекста. Если линий больше одной, по легенде можно кликать — линия
+// скрывается/появляется, а масштаб графика пересчитывается по видимым.
 export function drawLineChart(rootId, dates, lines) {
   const root = document.getElementById(rootId);
   if (!dates || dates.length < 2) { root.innerHTML = `<div class="chart-empty">${t('chart_no_data')}</div>`; return; }
+
+  if (!lineHiddenState.has(rootId)) lineHiddenState.set(rootId, new Set());
+  const hidden = lineHiddenState.get(rootId);
+  const toggleable = lines.length > 1;
+
+  const legend = toggleable ? `
+    <div class="chart-legend">
+      ${lines.map((l) => `
+        <button type="button" class="legend-item legend-toggle${hidden.has(l.label) ? ' inactive' : ''}" data-label="${escapeHtml(l.label)}">
+          <span class="legend-dot" style="background:${hidden.has(l.label) ? 'transparent' : l.color}; border-color:${l.color}"></span>${escapeHtml(l.label)}
+        </button>`).join('')}
+    </div>
+  ` : '';
+
+  const attachLegendEvents = () => {
+    if (!toggleable) return;
+    root.querySelectorAll('.legend-toggle').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const label = btn.dataset.label;
+        if (hidden.has(label)) hidden.delete(label); else hidden.add(label);
+        drawLineChart(rootId, dates, lines);
+      });
+    });
+  };
+
+  const visibleLines = lines.filter((l) => !hidden.has(l.label));
+  if (!visibleLines.length) {
+    root.innerHTML = `<div class="chart-svg-wrap"><div class="chart-empty">${t('chart_all_hidden')}</div></div>${legend}`;
+    attachLegendEvents();
+    return;
+  }
 
   const width = 640;
   const height = 260;
@@ -467,7 +536,7 @@ export function drawLineChart(rootId, dates, lines) {
   const plotW = width - padL - padR;
   const plotH = height - padT - padB;
 
-  const allValues = lines.flatMap((l) => l.values);
+  const allValues = visibleLines.flatMap((l) => l.values);
   const minV = Math.min(0, ...allValues);
   const maxV = Math.max(...allValues);
   const range = maxV - minV || 1;
@@ -477,33 +546,29 @@ export function drawLineChart(rootId, dates, lines) {
 
   const pointsFor = (values) => values.map((v, i) => ({ x: xAt(i), y: yAt(v) }));
   const gradientId = `${rootId}-area-gradient`;
-  const firstLinePoints = pointsFor(lines[0].values);
-  const areaPath = `${smoothPath(firstLinePoints)} L ${xAt(dates.length - 1).toFixed(1)} ${(padT + plotH).toFixed(1)} L ${xAt(0).toFixed(1)} ${(padT + plotH).toFixed(1)} Z`;
+  const areaLine = visibleLines[0];
+  const areaPoints = pointsFor(areaLine.values);
+  const areaPath = `${smoothPath(areaPoints)} L ${xAt(dates.length - 1).toFixed(1)} ${(padT + plotH).toFixed(1)} L ${xAt(0).toFixed(1)} ${(padT + plotH).toFixed(1)} Z`;
 
   const svg = `
     <svg viewBox="0 0 ${width} ${height}" width="100%" height="${height}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="${t('chart_balance_title')}">
       <defs>
         <linearGradient id="${gradientId}" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="${lines[0].color}" stop-opacity="0.35" />
-          <stop offset="100%" stop-color="${lines[0].color}" stop-opacity="0" />
+          <stop offset="0%" stop-color="${areaLine.color}" stop-opacity="0.35" />
+          <stop offset="100%" stop-color="${areaLine.color}" stop-opacity="0" />
         </linearGradient>
       </defs>
       <path d="${areaPath}" fill="url(#${gradientId})" stroke="none" />
       <text x="${padL}" y="${height - 8}" class="chart-axis-text" fill="var(--chart-ink-muted)" text-anchor="start">${formatDate(dates[0])}</text>
       <text x="${width - padR}" y="${height - 8}" class="chart-axis-text" fill="var(--chart-ink-muted)" text-anchor="end">${formatDate(dates[dates.length - 1])}</text>
-      ${lines.map((line) => `<path d="${smoothPath(pointsFor(line.values))}" fill="none" stroke="${line.color}" stroke-width="${line.width}" stroke-linecap="round" stroke-linejoin="round" />`).join('')}
+      ${visibleLines.map((line) => `<path d="${smoothPath(pointsFor(line.values))}" fill="none" stroke="${line.color}" stroke-width="${line.width}" stroke-linecap="round" stroke-linejoin="round" />`).join('')}
       <line id="${rootId}-crosshair" x1="0" y1="${padT}" x2="0" y2="${padT + plotH}" stroke="var(--chart-axis)" stroke-width="1" style="display:none;" />
       <rect id="${rootId}-hover-rect" x="${padL}" y="${padT}" width="${plotW}" height="${plotH}" fill="transparent" style="touch-action:none;" />
     </svg>
   `;
 
-  const legend = lines.length > 1 ? `
-    <div class="chart-legend">
-      ${lines.map((l) => `<div class="legend-item"><span class="legend-dot" style="background:${l.color}"></span>${escapeHtml(l.label)}</div>`).join('')}
-    </div>
-  ` : '';
-
   root.innerHTML = `<div class="chart-svg-wrap">${svg}<div class="chart-tooltip" id="${rootId}-tooltip"></div></div>${legend}`;
+  attachLegendEvents();
 
   const svgEl = root.querySelector('svg');
   const hoverRect = document.getElementById(`${rootId}-hover-rect`);
@@ -524,9 +589,9 @@ export function drawLineChart(rootId, dates, lines) {
 
     tooltip.style.display = 'block';
     tooltip.style.left = (cx / scaleX) + 'px';
-    tooltip.style.top = (yAt(lines[0].values[idx]) / scaleY) + 'px';
+    tooltip.style.top = (yAt(visibleLines[0].values[idx]) / scaleY) + 'px';
     tooltip.innerHTML = `<strong>${formatDate(dates[idx])}</strong><br>` +
-      lines.map((l) => `<span style="color:${l.color}">●</span> ${escapeHtml(l.label)}: <span class="money-value">${formatMoney(l.values[idx])}</span>`).join('<br>');
+      visibleLines.map((l) => `<span style="color:${l.color}">●</span> ${escapeHtml(l.label)}: <span class="money-value">${formatMoney(l.values[idx])}</span>`).join('<br>');
   };
   const hideTooltip = () => {
     crosshair.style.display = 'none';

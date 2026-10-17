@@ -174,7 +174,7 @@ const I18N = {
     summary_net_label: 'Итог',
 
     analytics_pie_title: 'Расходы по категориям',
-    analytics_line_title: 'Общий капитал во времени',
+    analytics_line_title: 'Ликвидность во времени',
     analytics_scope_all: 'Вся семья',
     analytics_period_all: 'Всё время',
     analytics_period_month: 'Этот месяц',
@@ -182,10 +182,11 @@ const I18N = {
     analytics_period_year: 'Год',
     analytics_period_custom: 'Свой период',
     chart_balance_title: 'Баланс во времени',
-    analytics_total_line_label: 'Общий капитал',
+    analytics_total_line_label: 'Всего',
     analytics_liquid_line_label: 'Ликвидность',
     analytics_savings_line_label: 'Накопления',
     chart_no_data: 'Недостаточно данных для графика.',
+    chart_all_hidden: 'Все линии скрыты. Нажмите на легенду, чтобы показать.',
 
     icon_picker_label: 'Иконка (необязательно)',
 
@@ -356,7 +357,7 @@ const I18N = {
     summary_net_label: 'Підсумок',
 
     analytics_pie_title: 'Витрати за категоріями',
-    analytics_line_title: 'Загальний капітал у часі',
+    analytics_line_title: 'Ліквідність у часі',
     analytics_scope_all: 'Уся сім\'я',
     analytics_period_all: 'Весь час',
     analytics_period_month: 'Цей місяць',
@@ -364,10 +365,11 @@ const I18N = {
     analytics_period_year: 'Рік',
     analytics_period_custom: 'Свій період',
     chart_balance_title: 'Баланс у часі',
-    analytics_total_line_label: 'Загальний капітал',
+    analytics_total_line_label: 'Усього',
     analytics_liquid_line_label: 'Ліквідність',
     analytics_savings_line_label: 'Накопичення',
     chart_no_data: 'Недостатньо даних для графіка.',
+    chart_all_hidden: 'Усі лінії приховані. Натисніть на легенду, щоб показати.',
 
     icon_picker_label: 'Іконка (необов\'язково)',
 
@@ -538,7 +540,7 @@ const I18N = {
     summary_net_label: 'סה"כ',
 
     analytics_pie_title: 'הוצאות לפי קטגוריה',
-    analytics_line_title: 'הון כולל לאורך זמן',
+    analytics_line_title: 'נזילות לאורך זמן',
     analytics_scope_all: 'כל המשפחה',
     analytics_period_all: 'כל הזמן',
     analytics_period_month: 'החודש הזה',
@@ -546,10 +548,11 @@ const I18N = {
     analytics_period_year: 'שנה',
     analytics_period_custom: 'טווח מותאם',
     chart_balance_title: 'יתרה לאורך זמן',
-    analytics_total_line_label: 'הון כולל',
+    analytics_total_line_label: 'סך הכל',
     analytics_liquid_line_label: 'נזילות',
     analytics_savings_line_label: 'חיסכונות',
     chart_no_data: 'אין מספיק נתונים לגרף.',
+    chart_all_hidden: 'כל הקווים מוסתרים. לחצו על המקרא כדי להציג.',
 
     icon_picker_label: 'סמל (לא חובה)',
 
@@ -720,7 +723,7 @@ const I18N = {
     summary_net_label: 'Net',
 
     analytics_pie_title: 'Expenses by category',
-    analytics_line_title: 'Net worth over time',
+    analytics_line_title: 'Liquidity over time',
     analytics_scope_all: 'Whole family',
     analytics_period_all: 'All time',
     analytics_period_month: 'This month',
@@ -728,10 +731,11 @@ const I18N = {
     analytics_period_year: 'Year',
     analytics_period_custom: 'Custom range',
     chart_balance_title: 'Balance over time',
-    analytics_total_line_label: 'Net worth',
+    analytics_total_line_label: 'Total',
     analytics_liquid_line_label: 'Liquid',
     analytics_savings_line_label: 'Savings',
     chart_no_data: 'Not enough data for a chart.',
+    chart_all_hidden: 'All lines are hidden. Click the legend to show one.',
 
     icon_picker_label: 'Icon (optional)',
 
