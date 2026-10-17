@@ -5,7 +5,7 @@ import { escapeHtml, formatMoney, formatDate } from '../utils.js';
 import { renderPeriodControl, attachPeriodControl, renderAccountBalanceChart, drawPieChart, renderExpenseTable, renderCheckpointBalanceChart } from '../charts.js';
 import { renderTxSection, attachTxListEvents } from './transactions.js';
 import { openTransactionModal, openCheckpointModal, openNewSavingsModal, openRenameSavingsModal } from './modalForms.js';
-import { confirmDialog } from '../modal.js';
+import { confirmDialog, alertDialog } from '../modal.js';
 import { icon } from '../icons.js';
 import { refreshApp, renderCurrentTab } from '../tabs.js';
 import { Api } from '../api.js';
@@ -189,7 +189,7 @@ export function attachMemberEvents(memberId) {
       await refreshApp();
     } catch (err) {
       btn.disabled = false;
-      alert(t('err_savings_delete_failed') + err.message);
+      alertDialog(t('err_savings_delete_failed') + err.message);
     }
   });
   document.getElementById('btn-add-checkpoint').addEventListener('click', () => {
@@ -211,7 +211,7 @@ export function attachMemberEvents(memberId) {
         await refreshApp();
       } catch (err) {
         btn.disabled = false;
-        alert(t('err_checkpoint_delete_failed') + err.message);
+        alertDialog(t('err_checkpoint_delete_failed') + err.message);
       }
     });
   });

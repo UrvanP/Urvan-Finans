@@ -8,6 +8,7 @@ let privacyMode = false;
 
 function applyPrivacyButton() {
   const btn = document.getElementById('btn-privacy');
+  if (!btn) return;
   btn.innerHTML = icon(privacyMode ? 'eye-off' : 'eye');
   btn.title = privacyMode ? t('privacy_show_title') : t('privacy_hide_title');
 }
@@ -30,6 +31,7 @@ export function setTheme(mode) {
 
 function applyThemeButton() {
   const btn = document.getElementById('btn-theme');
+  if (!btn) return;
   const mode = getTheme();
   btn.innerHTML = icon(mode === 'dark' ? 'moon' : mode === 'light' ? 'sun' : 'monitor');
   const modeLabel = mode === 'dark' ? t('theme_dark') : mode === 'light' ? t('theme_light') : t('theme_system');
@@ -46,15 +48,26 @@ export function cycleTheme() {
 
 export function applyStaticText() {
   document.title = t('app_title');
+  // Элементы ищем защищённо: сразу после деплоя у части пользователей может
+  // на короткое время оказаться старый закэшированный index.html рядом с
+  // новым app.js (service worker обновляет файлы по отдельности) — без этой
+  // проверки отсутствующая кнопка валила бы всю функцию с TypeError, и
+  // остальные (тема/приватность) оставались бы без иконок.
   const langBtn = document.getElementById('btn-lang');
-  langBtn.title = t('lang_btn_title');
-  langBtn.innerHTML = icon('globe');
+  if (langBtn) {
+    langBtn.title = t('lang_btn_title');
+    langBtn.innerHTML = icon('globe');
+  }
   const searchBtn = document.getElementById('btn-search');
-  searchBtn.title = t('search_btn_title');
-  searchBtn.innerHTML = icon('search');
+  if (searchBtn) {
+    searchBtn.title = t('search_btn_title');
+    searchBtn.innerHTML = icon('search');
+  }
   const settingsBtn = document.getElementById('btn-settings');
-  settingsBtn.title = t('tab_settings');
-  settingsBtn.innerHTML = icon('settings');
+  if (settingsBtn) {
+    settingsBtn.title = t('tab_settings');
+    settingsBtn.innerHTML = icon('settings');
+  }
   applyPrivacyButton();
   applyThemeButton();
 }

@@ -46,7 +46,11 @@ export function downloadCsv(filename, rows) {
 // скрыт (например, вкладку успели переключить).
 export function animateCountUp(el, targetValue, formatFn, duration = 700) {
   if (!el) return;
-  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+  // Если вкладка/PWA в этот момент не на экране (свёрнуто, фон, установленное
+  // приложение не в фокусе), requestAnimationFrame может вообще не получить
+  // ни одного кадра — тогда число осталось бы на плейсхолдере навсегда.
+  // Поэтому не анимируем, если страница скрыта, и уважаем reduced-motion.
+  if (document.hidden || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
     el.textContent = formatFn(targetValue);
     return;
   }
@@ -59,6 +63,12 @@ export function animateCountUp(el, targetValue, formatFn, duration = 700) {
     if (progress < 1) requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
+  // Страховка: даже если rAF застрянет на полпути (вкладку свернули прямо
+  // во время анимации), гарантированно подставляем верное значение —
+  // setTimeout, в отличие от rAF, не замирает полностью в фоне.
+  setTimeout(() => {
+    if (document.body.contains(el)) el.textContent = formatFn(targetValue);
+  }, duration + 200);
 }
 
 // Блокирует кнопку и подменяет текст на время выполнения async-операции —

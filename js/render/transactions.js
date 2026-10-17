@@ -3,7 +3,7 @@ import { state } from '../state.js';
 import { t } from '../i18n.js';
 import { escapeHtml, formatMoney, formatDate } from '../utils.js';
 import { openTransactionModal } from './modalForms.js';
-import { confirmDialog } from '../modal.js';
+import { confirmDialog, alertDialog } from '../modal.js';
 import { icon } from '../icons.js';
 import { refreshApp } from '../tabs.js';
 import { Api } from '../api.js';
@@ -114,7 +114,7 @@ export function attachTxListEvents(accountId, { skipFilterBar = false } = {}) {
           await refreshApp();
         } catch (err) {
           btn.disabled = false;
-          alert(t('err_tx_delete_failed') + err.message);
+          alertDialog(t('err_tx_delete_failed') + err.message);
         }
       });
     });

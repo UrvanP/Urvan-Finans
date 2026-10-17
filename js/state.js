@@ -26,7 +26,7 @@ export let state = { members: [], categories: [], accounts: [], transactions: []
 
 export const ICON_CHOICES = ['💰', '🏦', '🐷', '💳', '🛒', '🍔', '🚗', '🏠', '💊', '🎓', '🎁', '✈️', '📱', '👗', '🎮', '📈', '👶', '⚡', '🧾', '☕', '🐾', '💼'];
 
-export const AVATAR_COLORS = ['#8a9a2e', '#c2861f', '#c2672c', '#5f7a34', '#6a52b3', '#3f8f82'];
+export const AVATAR_COLORS = ['#8a9a2e', '#c2861f', '#c2672c', '#5f7a34', '#a65d3f', '#9c7a3c'];
 
 export function avatarColor(name) {
   const sum = [...name].reduce((s, ch) => s + ch.charCodeAt(0), 0);

@@ -3,7 +3,7 @@
 import { state } from '../state.js';
 import { t } from '../i18n.js';
 import { escapeHtml, todayStr, withBusy } from '../utils.js';
-import { openModal, closeModal, renderIconPicker, wireIconPicker } from '../modal.js';
+import { openModal, closeModal, renderIconPicker, wireIconPicker, alertDialog, confirmDialog } from '../modal.js';
 import { refreshApp } from '../tabs.js';
 import { Api } from '../api.js';
 
@@ -47,8 +47,11 @@ export function openTransactionModal({ accountId, transaction }) {
       <input type="text" id="tx-comment" value="${transaction && transaction.comment ? escapeHtml(transaction.comment) : ''}" />
     </div>
     <div class="modal-actions">
-      <button class="btn btn-ghost" id="tx-cancel">${t('btn_cancel')}</button>
-      <button class="btn" id="tx-save">${t('btn_save')}</button>
+      ${isEdit ? `<button class="btn btn-danger" id="tx-delete">${t('btn_delete')}</button>` : '<span></span>'}
+      <div style="display:flex; gap:10px;">
+        <button class="btn btn-ghost" id="tx-cancel">${t('btn_cancel')}</button>
+        <button class="btn" id="tx-save">${t('btn_save')}</button>
+      </div>
     </div>
   `);
 
@@ -62,14 +65,31 @@ export function openTransactionModal({ accountId, transaction }) {
   });
 
   document.getElementById('tx-cancel').addEventListener('click', closeModal);
+
+  const deleteBtn = document.getElementById('tx-delete');
+  if (deleteBtn) {
+    deleteBtn.addEventListener('click', async () => {
+      if (!(await confirmDialog(t('confirm_delete_transaction')))) return;
+      deleteBtn.disabled = true;
+      try {
+        await Api.deleteTransaction(transaction.id);
+        closeModal();
+        await refreshApp();
+      } catch (err) {
+        deleteBtn.disabled = false;
+        alertDialog(t('err_tx_delete_failed') + err.message);
+      }
+    });
+  }
+
   document.getElementById('tx-save').addEventListener('click', async (e) => {
     const amount = parseFloat(document.getElementById('tx-amount').value);
     const date = document.getElementById('tx-date').value;
     const category_id = document.getElementById('tx-category').value || null;
     const comment = document.getElementById('tx-comment').value.trim();
 
-    if (!amount || amount <= 0) { alert(t('err_amount_positive')); return; }
-    if (!date) { alert(t('err_date_required')); return; }
+    if (!amount || amount <= 0) { alertDialog(t('err_amount_positive')); return; }
+    if (!date) { alertDialog(t('err_date_required')); return; }
 
     try {
       await withBusy(e.currentTarget, t('btn_save') + '…', async () => {
@@ -82,7 +102,7 @@ export function openTransactionModal({ accountId, transaction }) {
       closeModal();
       await refreshApp();
     } catch (err) {
-      alert(t('err_tx_save_failed') + err.message);
+      alertDialog(t('err_tx_save_failed') + err.message);
     }
   });
 }
@@ -127,9 +147,9 @@ export function openNewSavingsModal({ memberId }) {
     const date = document.getElementById('new-sav-date').value;
     const comment = document.getElementById('new-sav-comment').value.trim();
 
-    if (!name) { alert(t('err_savings_name_required')); return; }
-    if (isNaN(balance)) { alert(t('err_amount_required')); return; }
-    if (!date) { alert(t('err_date_required')); return; }
+    if (!name) { alertDialog(t('err_savings_name_required')); return; }
+    if (isNaN(balance)) { alertDialog(t('err_amount_required')); return; }
+    if (!date) { alertDialog(t('err_date_required')); return; }
 
     try {
       await withBusy(e.currentTarget, t('btn_create') + '…', async () => {
@@ -139,7 +159,7 @@ export function openNewSavingsModal({ memberId }) {
       closeModal();
       await refreshApp();
     } catch (err) {
-      alert(t('err_savings_create_failed') + err.message);
+      alertDialog(t('err_savings_create_failed') + err.message);
     }
   });
 }
@@ -168,13 +188,13 @@ export function openRenameSavingsModal(accountId) {
   document.getElementById('rename-cancel').addEventListener('click', closeModal);
   document.getElementById('rename-save').addEventListener('click', async (e) => {
     const name = document.getElementById('rename-input').value.trim();
-    if (!name) { alert(t('err_name_empty')); return; }
+    if (!name) { alertDialog(t('err_name_empty')); return; }
     try {
       await withBusy(e.currentTarget, t('btn_save') + '…', () => Api.updateAccount(accountId, { name, icon: getIcon() }));
       closeModal();
       await refreshApp();
     } catch (err) {
-      alert(t('err_savings_rename_failed') + err.message);
+      alertDialog(t('err_savings_rename_failed') + err.message);
     }
   });
 }
@@ -210,8 +230,8 @@ export function openCheckpointModal({ accountId, checkpoint }) {
     const balance = parseFloat(document.getElementById('cp-balance').value);
     const comment = document.getElementById('cp-comment').value.trim();
 
-    if (!date) { alert(t('err_date_required')); return; }
-    if (isNaN(balance)) { alert(t('err_amount_required')); return; }
+    if (!date) { alertDialog(t('err_date_required')); return; }
+    if (isNaN(balance)) { alertDialog(t('err_amount_required')); return; }
 
     try {
       await withBusy(e.currentTarget, t('btn_save') + '…', async () => {
@@ -224,7 +244,7 @@ export function openCheckpointModal({ accountId, checkpoint }) {
       closeModal();
       await refreshApp();
     } catch (err) {
-      alert(t('err_checkpoint_save_failed') + err.message);
+      alertDialog(t('err_checkpoint_save_failed') + err.message);
     }
   });
 }

@@ -67,6 +67,7 @@ const I18N = {
     btn_cancel: 'Отмена',
     btn_save: 'Сохранить',
     btn_delete: 'Удалить',
+    btn_ok: 'Понятно',
     confirm_title: 'Подтверждение',
     err_amount_positive: 'Введите сумму больше нуля.',
     err_date_required: 'Укажите дату.',
@@ -74,6 +75,7 @@ const I18N = {
 
     savings_new_title: 'Новая копилка',
     field_name: 'Название',
+    field_person_name: 'Имя',
     name_placeholder_example: 'Например, Пенсия',
     field_current_amount: 'Текущая сумма, ₪',
     btn_create: 'Создать',
@@ -247,6 +249,7 @@ const I18N = {
     btn_cancel: 'Скасувати',
     btn_save: 'Зберегти',
     btn_delete: 'Видалити',
+    btn_ok: 'Зрозуміло',
     confirm_title: 'Підтвердження',
     err_amount_positive: 'Введіть суму більшу за нуль.',
     err_date_required: 'Вкажіть дату.',
@@ -254,6 +257,7 @@ const I18N = {
 
     savings_new_title: 'Нова скарбничка',
     field_name: 'Назва',
+    field_person_name: "Ім'я",
     name_placeholder_example: 'Наприклад, Пенсія',
     field_current_amount: 'Поточна сума, ₪',
     btn_create: 'Створити',
@@ -427,6 +431,7 @@ const I18N = {
     btn_cancel: 'ביטול',
     btn_save: 'שמירה',
     btn_delete: 'מחיקה',
+    btn_ok: 'הבנתי',
     confirm_title: 'אישור',
     err_amount_positive: 'הזן סכום גדול מאפס.',
     err_date_required: 'בחר תאריך.',
@@ -434,6 +439,7 @@ const I18N = {
 
     savings_new_title: 'קופת חיסכון חדשה',
     field_name: 'שם',
+    field_person_name: 'שם',
     name_placeholder_example: 'לדוגמה, פנסיה',
     field_current_amount: 'סכום נוכחי, ₪',
     btn_create: 'יצירה',
@@ -607,6 +613,7 @@ const I18N = {
     btn_cancel: 'Cancel',
     btn_save: 'Save',
     btn_delete: 'Delete',
+    btn_ok: 'Got it',
     confirm_title: 'Please confirm',
     err_amount_positive: 'Enter an amount greater than zero.',
     err_date_required: 'Please pick a date.',
@@ -614,6 +621,7 @@ const I18N = {
 
     savings_new_title: 'New savings account',
     field_name: 'Name',
+    field_person_name: 'Name',
     name_placeholder_example: 'e.g. Pension',
     field_current_amount: 'Current amount, ₪',
     btn_create: 'Create',

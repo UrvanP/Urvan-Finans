@@ -66,15 +66,15 @@ export function renderOverview() {
     </div>
     <div class="summary-grid">
       ${memberBalances.map((x) => `
-        <div class="card balance-card accent" style="border-left-color:${x.color}">
+        <div class="card balance-card accent" style="border-inline-start-color:${x.color}">
           <div class="label">${escapeHtml(displayMemberName(x.member.name))}${t('overview_current_suffix')}</div>
           <div class="amount money-value">${formatMoney(x.balance)}</div>
         </div>`).join('')}
-      <div class="card balance-card accent" style="border-left-color:var(--accent-cash)">
+      <div class="card balance-card accent" style="border-inline-start-color:var(--accent-cash)">
         <div class="label">${t('overview_cash_label')}</div>
         <div class="amount money-value">${formatMoney(cashBalance)}</div>
       </div>
-      <div class="card balance-card accent" style="border-left-color:var(--accent-savings)">
+      <div class="card balance-card accent" style="border-inline-start-color:var(--accent-savings)">
         <div class="label">${t('overview_savings_total')}</div>
         <div class="amount money-value">${formatMoney(savingsTotal)}</div>
       </div>
@@ -122,7 +122,7 @@ export function attachOverviewEvents() {
     .reduce((s, m) => s + accountBalance(currentAccountOf(m.id)), 0) + accountBalance(cash);
   drawRadialGauge('overview-total-gauge', {
     fraction: liquidTotal / ((liquidTotal + savingsTotal) || 1),
-    centerHtml: `<span class="money-value" id="overview-total-gauge-value">${formatMoney(0)}</span>`,
+    centerHtml: `<span class="money-value" id="overview-total-gauge-value">${formatMoney(liquidTotal)}</span>`,
     label: t('overview_liquid_total'),
   });
   animateCountUp(document.getElementById('overview-total-gauge-value'), liquidTotal, formatMoney);

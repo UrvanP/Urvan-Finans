@@ -89,6 +89,36 @@ export function confirmDialog(message, { danger = true } = {}) {
   });
 }
 
+// Возвращает Promise<void> — разрешается, когда пользователь закрыл окно.
+// Заменяет нативный alert(), который не подхватывает тему и ломает RTL.
+export function alertDialog(message) {
+  return new Promise((resolve) => {
+    openModal(`
+      <p>${message}</p>
+      <div class="modal-actions">
+        <span></span>
+        <button class="btn" id="alert-ok">${t('btn_ok')}</button>
+      </div>
+    `);
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      closeModal();
+      resolve();
+    };
+    document.getElementById('alert-ok').addEventListener('click', finish);
+    const overlay = document.getElementById('modal-overlay');
+    const observer = new MutationObserver(() => {
+      if (!document.body.contains(overlay)) {
+        observer.disconnect();
+        finish();
+      }
+    });
+    observer.observe(document.getElementById('modal-root'), { childList: true });
+  });
+}
+
 export function renderIconPicker(pickerId, selected) {
   return `<div class="icon-picker" id="${pickerId}">${ICON_CHOICES.map((ic) => `<button type="button" data-icon="${ic}" class="${ic === selected ? 'active' : ''}">${ic}</button>`).join('')}</div>`;
 }

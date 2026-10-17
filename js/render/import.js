@@ -5,6 +5,7 @@ import { t } from '../i18n.js';
 import { escapeHtml, formatMoney, formatDate } from '../utils.js';
 import { refreshApp } from '../tabs.js';
 import { Api } from '../api.js';
+import { alertDialog } from '../modal.js';
 
 let importHeaders = [];
 let importParsedRows = null;
@@ -136,12 +137,12 @@ async function handleImportFile(file) {
   try {
     await loadXlsxLib();
   } catch (err) {
-    alert(t('err_file_read') + err.message);
+    alertDialog(t('err_file_read') + err.message);
     return;
   }
   const isCsv = /\.csv$/i.test(file.name);
   const reader = new FileReader();
-  reader.onerror = () => alert(t('err_file_read') + reader.error);
+  reader.onerror = () => alertDialog(t('err_file_read') + reader.error);
   reader.onload = (e) => {
     try {
       const wb = isCsv
@@ -149,13 +150,13 @@ async function handleImportFile(file) {
         : XLSX.read(new Uint8Array(e.target.result), { type: 'array', cellDates: true });
       const sheet = wb.Sheets[wb.SheetNames[0]];
       const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false, dateNF: 'yyyy-mm-dd' });
-      if (!rows.length) { alert(t('err_import_no_rows')); return; }
+      if (!rows.length) { alertDialog(t('err_import_no_rows')); return; }
       importHeaders = rows[0].map((h, i) => (h === undefined || h === '' ? `Col ${i + 1}` : String(h)));
       importParsedRows = rows.slice(1).filter((r) => r.some((cell) => cell !== undefined && cell !== ''));
-      if (!importParsedRows.length) { alert(t('err_import_no_rows')); return; }
+      if (!importParsedRows.length) { alertDialog(t('err_import_no_rows')); return; }
       renderImportMapping();
     } catch (err) {
-      alert(t('err_file_read') + err.message);
+      alertDialog(t('err_file_read') + err.message);
     }
   };
   if (isCsv) reader.readAsText(file);
@@ -280,7 +281,7 @@ async function doImport() {
   const accountId = document.getElementById('import-account-select').value;
   const config = readImportConfig();
   const rows = buildImportRows(config);
-  if (!rows.length) { alert(t('err_import_no_rows')); return; }
+  if (!rows.length) { alertDialog(t('err_import_no_rows')); return; }
 
   const payload = rows.map((r) => ({
     account_id: accountId,
@@ -294,8 +295,8 @@ async function doImport() {
   try {
     await Api.addTransactionsBulk(payload);
     await refreshApp();
-    alert(t('import_success_prefix') + payload.length);
+    alertDialog(t('import_success_prefix') + payload.length);
   } catch (err) {
-    alert(t('err_import_failed') + err.message);
+    alertDialog(t('err_import_failed') + err.message);
   }
 }

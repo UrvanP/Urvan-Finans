@@ -1,7 +1,7 @@
 // Кэшируем только "оболочку" приложения (HTML/CSS/JS), чтобы оно
 // быстро открывалось и не падало без сети. Данные из Supabase
 // всегда идут напрямую по сети — офлайн-работу с данными не делаем.
-const CACHE_NAME = 'urvan-finance-shell-v7';
+const CACHE_NAME = 'urvan-finance-shell-v8';
 const SHELL_FILES = [
   './',
   './index.html',
@@ -49,18 +49,22 @@ self.addEventListener('fetch', (event) => {
   // Запросы к Supabase не трогаем — они всегда должны идти в сеть.
   if (url.origin !== self.location.origin) return;
 
+  // Сначала сеть, кэш — только как офлайн-резерв. Раньше было наоборот
+  // (отдать кэш сразу, обновить его в фоне) — при обновлении файлы оболочки
+  // обновлялись по отдельности, и пользователь мог на короткое время
+  // получить смесь старого index.html с новым app.js (или наоборот) —
+  // отсюда "сломанная после деплоя" шапка. Раз для данных всё равно нужна
+  // сеть (Supabase), нет смысла намеренно отдавать устаревшую оболочку,
+  // когда сеть есть.
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      const network = fetch(event.request)
-        .then((response) => {
-          if (response.ok) {
-            const copy = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
-          }
-          return response;
-        })
-        .catch(() => cached);
-      return cached || network;
-    })
+    fetch(event.request)
+      .then((response) => {
+        if (response.ok) {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+        }
+        return response;
+      })
+      .catch(() => caches.match(event.request))
   );
 });

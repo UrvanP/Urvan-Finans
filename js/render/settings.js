@@ -2,7 +2,7 @@
 import { state, accountLabel, avatarColor, displayMemberName } from '../state.js';
 import { t } from '../i18n.js';
 import { escapeHtml, downloadCsv, withBusy } from '../utils.js';
-import { openModal, closeModal, renderIconPicker, wireIconPicker, confirmDialog } from '../modal.js';
+import { openModal, closeModal, renderIconPicker, wireIconPicker, confirmDialog, alertDialog } from '../modal.js';
 import { refreshApp } from '../tabs.js';
 import { Api } from '../api.js';
 import { renderImportWidget, attachImportWidgetEvents } from './import.js';
@@ -26,7 +26,7 @@ function openMemberModal(member) {
   openModal(`
     <h3>${isEdit ? t('member_rename_title') : t('member_new_title')}</h3>
     <div class="form-row">
-      <label>${t('field_name')}</label>
+      <label>${t('field_person_name')}</label>
       <input type="text" id="member-name-input" placeholder="${t('member_name_placeholder')}" value="${isEdit ? escapeHtml(member.name) : ''}" />
     </div>
     <div class="modal-actions">
@@ -38,7 +38,7 @@ function openMemberModal(member) {
   document.getElementById('member-cancel').addEventListener('click', closeModal);
   document.getElementById('member-save').addEventListener('click', async (e) => {
     const name = document.getElementById('member-name-input').value.trim();
-    if (!name) { alert(t('err_member_name_required')); return; }
+    if (!name) { alertDialog(t('err_member_name_required')); return; }
     try {
       await withBusy(e.currentTarget, (isEdit ? t('btn_save') : t('btn_create')) + '…', () => (
         isEdit ? Api.updateMember(member.id, { name }) : Api.addMember(name)
@@ -46,7 +46,7 @@ function openMemberModal(member) {
       closeModal();
       await refreshApp();
     } catch (err) {
-      alert((isEdit ? t('err_member_rename_failed') : t('err_member_add_failed')) + err.message);
+      alertDialog((isEdit ? t('err_member_rename_failed') : t('err_member_add_failed')) + err.message);
     }
   });
 }
@@ -68,7 +68,7 @@ function attachMembersSectionEvents() {
         await refreshApp();
       } catch (err) {
         btn.disabled = false;
-        alert(t('err_member_delete_failed') + err.message);
+        alertDialog(t('err_member_delete_failed') + err.message);
       }
     });
   });
@@ -131,7 +131,7 @@ export function renderSettingsTab() {
 
     <div class="settings-section">
       <h2>${t('import_bank_title')}</h2>
-      <p class="tx-meta">${t('import_bank_hint')}</p>
+      <p class="hint-text">${t('import_bank_hint')}</p>
       ${renderImportWidget()}
     </div>
   `;
@@ -153,12 +153,12 @@ export function attachSettingsEvents() {
 
   document.getElementById('cat-add').addEventListener('click', async (e) => {
     const name = document.getElementById('new-cat-name').value.trim();
-    if (!name) { alert(t('err_category_name_required')); return; }
+    if (!name) { alertDialog(t('err_category_name_required')); return; }
     try {
       await withBusy(e.currentTarget, t('btn_add') + '…', () => Api.addCategory(name, newType, getNewCatIcon()));
       await refreshApp();
     } catch (err) {
-      alert(t('err_category_add_failed') + err.message);
+      alertDialog(t('err_category_add_failed') + err.message);
     }
   });
 
@@ -178,12 +178,12 @@ function attachCatRowEvents(containerId) {
     const id = row.dataset.id;
     row.querySelector('.cat-save').addEventListener('click', async (e) => {
       const name = row.querySelector('.cat-name-input').value.trim();
-      if (!name) { alert(t('err_name_empty')); return; }
+      if (!name) { alertDialog(t('err_name_empty')); return; }
       try {
         await withBusy(e.currentTarget, '…', () => Api.updateCategory(id, { name }));
         await refreshApp();
       } catch (err) {
-        alert(t('err_category_rename_failed') + err.message);
+        alertDialog(t('err_category_rename_failed') + err.message);
       }
     });
     row.querySelector('.cat-delete').addEventListener('click', async () => {
@@ -195,7 +195,7 @@ function attachCatRowEvents(containerId) {
         await refreshApp();
       } catch (err) {
         btn.disabled = false;
-        alert(t('err_category_delete_failed') + err.message);
+        alertDialog(t('err_category_delete_failed') + err.message);
       }
     });
   });

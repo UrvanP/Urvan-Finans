@@ -384,6 +384,11 @@ main#app {
 /* Совсем маленькие экраны (iPhone SE и подобные, <375px) — чуть плотнее,
    чтобы 5 вкладок снизу не теснились и подписи не переносились. */
 @media (max-width: 374px) {
+  .header-identity {
+    font-size: var(--text-base);
+    gap: 6px;
+  }
+
   .tab-btn {
     padding: 6px 4px;
   }
@@ -721,6 +726,14 @@ main#app {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* Для многословных подсказок — в отличие от .tx-meta (однострочная дата/
+   комментарий в списке операций), эта не обрезается многоточием. */
+.hint-text {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  line-height: 1.5;
 }
 
 .tx-amount {
@@ -1076,8 +1089,10 @@ main#app {
 /* ---------- Цветные акценты по членам семьи (Общий статус) ---------- */
 
 .balance-card.accent {
-  border-left-width: 4px;
-  border-left-style: solid;
+  /* Логические свойства вместо border-left-* — автоматически переходят
+     на правый край в RTL (иврит), а не остаются физически слева. */
+  border-inline-start-width: 4px;
+  border-inline-start-style: solid;
 }
 
 /* ---------- Иконки категорий/копилок ---------- */
@@ -1297,6 +1312,16 @@ main#app {
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+/* На мобильной ширине плавающая кнопка добавления зафиксирована в правом
+   нижнем углу и может на время прокрутки перекрыть хвост строки (сумму/%) —
+   резервируем под неё немного места справа, чтобы текст не прятался под ней. */
+@media (max-width: 640px) {
+  .expense-table,
+  .chart-legend {
+    padding-right: 60px;
+  }
 }
 
 .expense-row-top {
