@@ -48,6 +48,23 @@ export function renderTxSection(accountId) {
   return `${renderFilterBar(accountId)}<div id="tx-list-${accountId}">${renderTxListRows(accountId)}</div>`;
 }
 
+// Общая разметка строки "запись + сумма/дельта + правка/удаление" — тот же
+// каркас (.tx-card > .tx-info + сумма + .tx-actions) используют и список
+// операций здесь, и список чекапов копилки (member.js), различается только
+// содержимое info/amount и классы кнопок, чтобы у каждого списка были свои
+// обработчики событий.
+export function renderDataRow({ id, idAttr, infoHtml, amountHtml, editClass, deleteClass }) {
+  return `
+    <div class="tx-card" data-${idAttr}="${id}">
+      <div class="tx-info">${infoHtml}</div>
+      ${amountHtml}
+      <div class="tx-actions">
+        <button class="icon-btn ${editClass}" title="${t('edit_title')}">${icon('pencil', { size: 17 })}</button>
+        <button class="icon-btn ${deleteClass}" title="${t('delete_title')}">${icon('trash', { size: 17 })}</button>
+      </div>
+    </div>`;
+}
+
 function renderTxListRows(accountId) {
   const txs = filteredTransactions(accountId);
   if (txs.length === 0) return `<div class="empty-hint">${t('empty_no_transactions')}</div>`;
@@ -57,18 +74,16 @@ function renderTxListRows(accountId) {
     const catIcon = cat && cat.icon ? escapeHtml(cat.icon) + ' ' : '';
     const catName = cat ? cat.name : t('no_category_label');
     const sign = tx.type === 'income' ? '+' : '−';
-    return `
-      <div class="tx-card" data-tx-id="${tx.id}">
-        <div class="tx-info">
-          <span class="tx-category">${catIcon}${escapeHtml(catName)}</span>
-          <span class="tx-meta">${formatDate(tx.date)}${tx.comment ? ' · ' + escapeHtml(tx.comment) : ''}</span>
-        </div>
-        <div class="tx-amount money-value ${tx.type}">${sign} ${formatMoney(tx.amount)}</div>
-        <div class="tx-actions">
-          <button class="icon-btn tx-edit" title="${t('edit_title')}">${icon('pencil', { size: 17 })}</button>
-          <button class="icon-btn tx-delete" title="${t('delete_title')}">${icon('trash', { size: 17 })}</button>
-        </div>
-      </div>`;
+    return renderDataRow({
+      id: tx.id,
+      idAttr: 'tx-id',
+      infoHtml: `
+        <span class="tx-category">${catIcon}${escapeHtml(catName)}</span>
+        <span class="tx-meta">${formatDate(tx.date)}${tx.comment ? ' · ' + escapeHtml(tx.comment) : ''}</span>`,
+      amountHtml: `<div class="tx-amount money-value ${tx.type}">${sign} ${formatMoney(tx.amount)}</div>`,
+      editClass: 'tx-edit',
+      deleteClass: 'tx-delete',
+    });
   }).join('');
 }
 

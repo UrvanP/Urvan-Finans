@@ -5,7 +5,7 @@ import { t } from '../i18n.js';
 import { escapeHtml, formatMoney, formatDate } from '../utils.js';
 import { refreshApp } from '../tabs.js';
 import { Api } from '../api.js';
-import { alertDialog } from '../modal.js';
+import { alertDialog, renderToggleGroup, wireToggleGroup } from '../modal.js';
 
 let importHeaders = [];
 let importParsedRows = null;
@@ -180,10 +180,10 @@ function renderImportMapping() {
     </div>
     <div class="form-row">
       <label>${t('import_amount_mode')}</label>
-      <div class="type-toggle" id="imp-amount-mode">
-        <button type="button" data-mode="single" class="active">${t('import_amount_single')}</button>
-        <button type="button" data-mode="split">${t('import_amount_split')}</button>
-      </div>
+      ${renderToggleGroup('imp-amount-mode', [
+        { value: 'single', label: t('import_amount_single') },
+        { value: 'split', label: t('import_amount_split') },
+      ], 'single')}
     </div>
     <div class="form-row" id="imp-single-wrap">
       <label>${t('import_column_amount')}</label>
@@ -207,14 +207,11 @@ function renderImportMapping() {
     </div>
   `;
 
-  document.getElementById('imp-amount-mode').querySelectorAll('button').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      document.getElementById('imp-amount-mode').querySelectorAll('button').forEach((b) => b.classList.toggle('active', b === btn));
-      const isSplit = btn.dataset.mode === 'split';
-      document.getElementById('imp-single-wrap').style.display = isSplit ? 'none' : '';
-      document.getElementById('imp-split-wrap').style.display = isSplit ? '' : 'none';
-      renderImportPreview();
-    });
+  wireToggleGroup('imp-amount-mode', (value) => {
+    const isSplit = value === 'split';
+    document.getElementById('imp-single-wrap').style.display = isSplit ? 'none' : '';
+    document.getElementById('imp-split-wrap').style.display = isSplit ? '' : 'none';
+    renderImportPreview();
   });
 
   ['imp-col-date', 'imp-col-amount', 'imp-col-credit', 'imp-col-debit', 'imp-col-desc'].forEach((id) => {
@@ -229,7 +226,7 @@ function renderImportMapping() {
 
 function readImportConfig() {
   const dateCol = parseInt(document.getElementById('imp-col-date').value, 10);
-  const mode = document.querySelector('#imp-amount-mode button.active').dataset.mode;
+  const mode = document.querySelector('#imp-amount-mode button.active').dataset.value;
   const descCol = parseInt(document.getElementById('imp-col-desc').value, 10);
   const config = { dateCol, mode, descCol };
   if (mode === 'single') {

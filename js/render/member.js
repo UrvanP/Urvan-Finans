@@ -3,7 +3,7 @@ import { state, currentAccountOf, savingsAccountsOf, accountBalance, checkpoints
 import { t } from '../i18n.js';
 import { escapeHtml, formatMoney, formatDate } from '../utils.js';
 import { renderPeriodControl, attachPeriodControl, renderAccountBalanceChart, drawPieChart, renderExpenseTable, renderCheckpointBalanceChart } from '../charts.js';
-import { renderTxSection, attachTxListEvents } from './transactions.js';
+import { renderTxSection, attachTxListEvents, renderDataRow } from './transactions.js';
 import { openTransactionModal, openCheckpointModal, openNewSavingsModal, openRenameSavingsModal } from './modalForms.js';
 import { confirmDialog, alertDialog } from '../modal.js';
 import { icon } from '../icons.js';
@@ -125,18 +125,16 @@ function renderCheckpointRows(cps) {
       const sign = delta >= 0 ? '+' : '−';
       deltaHtml = `<span class="tx-amount money-value ${cls}">${sign} ${formatMoney(Math.abs(delta))}</span>`;
     }
-    return `
-      <div class="tx-card" data-cp-id="${c.id}">
-        <div class="tx-info">
-          <span class="tx-category money-value">${formatMoney(c.balance)}</span>
-          <span class="tx-meta">${formatDate(c.date)}${c.comment ? ' · ' + escapeHtml(c.comment) : ''}</span>
-        </div>
-        ${deltaHtml}
-        <div class="tx-actions">
-          <button class="icon-btn cp-edit" title="${t('edit_title')}">${icon('pencil', { size: 17 })}</button>
-          <button class="icon-btn cp-delete" title="${t('delete_title')}">${icon('trash', { size: 17 })}</button>
-        </div>
-      </div>`;
+    return renderDataRow({
+      id: c.id,
+      idAttr: 'cp-id',
+      infoHtml: `
+        <span class="tx-category money-value">${formatMoney(c.balance)}</span>
+        <span class="tx-meta">${formatDate(c.date)}${c.comment ? ' · ' + escapeHtml(c.comment) : ''}</span>`,
+      amountHtml: deltaHtml,
+      editClass: 'cp-edit',
+      deleteClass: 'cp-delete',
+    });
   }).join('');
 }
 

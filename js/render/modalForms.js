@@ -3,7 +3,7 @@
 import { state } from '../state.js';
 import { t } from '../i18n.js';
 import { escapeHtml, todayStr, withBusy } from '../utils.js';
-import { openModal, closeModal, renderIconPicker, wireIconPicker, alertDialog, confirmDialog } from '../modal.js';
+import { openModal, closeModal, renderIconPicker, wireIconPicker, renderToggleGroup, wireToggleGroup, alertDialog, confirmDialog } from '../modal.js';
 import { refreshApp } from '../tabs.js';
 import { Api } from '../api.js';
 
@@ -25,10 +25,10 @@ export function openTransactionModal({ accountId, transaction }) {
     <h3>${isEdit ? t('tx_modal_edit_title') : t('tx_modal_new_title')}</h3>
     <div class="form-row">
       <label>${t('field_type')}</label>
-      <div class="type-toggle" id="tx-type-toggle">
-        <button type="button" data-type="expense" class="${type === 'expense' ? 'active' : ''}">${t('type_expense')}</button>
-        <button type="button" data-type="income" class="${type === 'income' ? 'active' : ''}">${t('type_income')}</button>
-      </div>
+      ${renderToggleGroup('tx-type-toggle', [
+        { value: 'expense', label: t('type_expense') },
+        { value: 'income', label: t('type_income') },
+      ], type)}
     </div>
     <div class="form-row">
       <label>${t('field_category')}</label>
@@ -55,13 +55,9 @@ export function openTransactionModal({ accountId, transaction }) {
     </div>
   `);
 
-  const toggle = document.getElementById('tx-type-toggle');
-  toggle.querySelectorAll('button').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      type = btn.dataset.type;
-      toggle.querySelectorAll('button').forEach((b) => b.classList.toggle('active', b === btn));
-      document.getElementById('tx-category').innerHTML = categoryOptions(type);
-    });
+  wireToggleGroup('tx-type-toggle', (value) => {
+    type = value;
+    document.getElementById('tx-category').innerHTML = categoryOptions(type);
   });
 
   document.getElementById('tx-cancel').addEventListener('click', closeModal);

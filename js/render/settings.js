@@ -2,7 +2,7 @@
 import { state, accountLabel, avatarColor, displayMemberName } from '../state.js';
 import { t } from '../i18n.js';
 import { escapeHtml, downloadCsv, withBusy } from '../utils.js';
-import { openModal, closeModal, renderIconPicker, wireIconPicker, confirmDialog, alertDialog } from '../modal.js';
+import { openModal, closeModal, renderIconPicker, wireIconPicker, renderToggleGroup, wireToggleGroup, confirmDialog, alertDialog } from '../modal.js';
 import { refreshApp } from '../tabs.js';
 import { Api } from '../api.js';
 import { renderImportWidget, attachImportWidgetEvents } from './import.js';
@@ -111,10 +111,10 @@ export function renderSettingsTab() {
       </div>
       <div class="form-row">
         <label>${t('field_type_simple')}</label>
-        <div class="type-toggle" id="new-cat-type-toggle">
-          <button type="button" data-type="expense" class="active">${t('type_expense')}</button>
-          <button type="button" data-type="income">${t('type_income')}</button>
-        </div>
+        ${renderToggleGroup('new-cat-type-toggle', [
+          { value: 'expense', label: t('type_expense') },
+          { value: 'income', label: t('type_income') },
+        ], 'expense')}
       </div>
       <div class="form-row">
         <label>${t('icon_picker_label')}</label>
@@ -143,13 +143,7 @@ export function attachSettingsEvents() {
   const getNewCatIcon = wireIconPicker('new-cat-icon-picker', null);
 
   let newType = 'expense';
-  const typeToggle = document.getElementById('new-cat-type-toggle');
-  typeToggle.querySelectorAll('button').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      newType = btn.dataset.type;
-      typeToggle.querySelectorAll('button').forEach((b) => b.classList.toggle('active', b === btn));
-    });
-  });
+  wireToggleGroup('new-cat-type-toggle', (value) => { newType = value; });
 
   document.getElementById('cat-add').addEventListener('click', async (e) => {
     const name = document.getElementById('new-cat-name').value.trim();
