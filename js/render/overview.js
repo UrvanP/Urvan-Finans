@@ -1,11 +1,14 @@
 // Вкладка "Общий статус": гейдж ликвидных средств, карточки участников,
 // графики и операции по общей наличности.
-import { state, cashAccount, currentAccountOf, accountBalance, avatarColor, displayMemberName, isForeignCurrency, currencySymbol } from '../state.js';
+import { state, cashAccount, currentAccountOf, accountBalance, avatarColor, displayMemberName, isForeignCurrency, currencySymbol, overBudgetCategories, dueRecurringTransactions, advanceRecurringDate } from '../state.js';
 import { t } from '../i18n.js';
-import { formatMoney, escapeHtml, animateCountUp } from '../utils.js';
+import { formatMoney, escapeHtml, animateCountUp, todayStr, withBusy } from '../utils.js';
 import { renderPeriodControl, attachPeriodControl, renderNetWorthLineChart, drawPieChart, renderExpenseTable, drawRadialGauge, computeNetWorthMonthlyChange } from '../charts.js';
 import { renderTxSection, attachTxListEvents } from './transactions.js';
 import { openTransactionModal } from './modalForms.js';
+import { alertDialog } from '../modal.js';
+import { refreshApp } from '../tabs.js';
+import { Api } from '../api.js';
 import { icon } from '../icons.js';
 
 function computeLastMonthSummary() {
@@ -46,6 +49,67 @@ function renderMonthlySummaryBanner() {
   `;
 }
 
+// Баннер уведомлений: превышенные бюджеты категорий + повторяющиеся операции,
+// у которых наступил срок. Появляется при каждом открытии/обновлении
+// приложения (см. README/обсуждение) — никаких системных разрешений не
+// требует, это просто часть обычной разметки Общего статуса.
+function renderNotificationsBanner() {
+  const overBudget = overBudgetCategories();
+  const due = dueRecurringTransactions();
+  if (!overBudget.length && !due.length) return '';
+
+  const budgetRows = overBudget.map((x) => `
+    <div class="notif-row">
+      <span>⚠ ${t('notif_budget_exceeded_prefix')} «${escapeHtml(x.category.name)}» ${t('notif_budget_exceeded_suffix')}
+        <span class="money-value">${formatMoney(x.spent)}</span> / <span class="money-value">${formatMoney(Number(x.budget.monthly_limit))}</span></span>
+    </div>`).join('');
+
+  const recurringRows = due.map((r) => {
+    const cat = state.categories.find((c) => c.id === r.category_id);
+    const catLabel = cat ? (cat.icon ? escapeHtml(cat.icon) + ' ' : '') + escapeHtml(cat.name) : t('no_category_label');
+    const sign = r.type === 'income' ? '+' : '−';
+    return `
+    <div class="notif-row" data-rec-id="${r.id}">
+      <span>🔁 ${t('notif_recurring_due_prefix')} ${catLabel} — <span class="tx-amount money-value ${r.type}">${sign} ${formatMoney(r.amount)}</span></span>
+      <div class="notif-row-actions">
+        <button class="btn btn-small notif-confirm">${t('notif_recurring_confirm_btn')}</button>
+        <button class="btn btn-ghost btn-small notif-skip">${t('notif_recurring_skip_btn')}</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  return `<div class="card notif-banner" id="notif-banner">${budgetRows}${recurringRows}</div>`;
+}
+
+function attachNotificationsBannerEvents() {
+  document.querySelectorAll('#notif-banner .notif-row[data-rec-id]').forEach((row) => {
+    const id = row.dataset.recId;
+    const rule = state.recurring.find((r) => r.id === id);
+    if (!rule) return;
+
+    row.querySelector('.notif-confirm').addEventListener('click', async (e) => {
+      try {
+        await withBusy(e.currentTarget, '…', async () => {
+          await Api.addTransaction({ account_id: rule.account_id, category_id: rule.category_id, type: rule.type, amount: rule.amount, date: todayStr(), comment: rule.comment });
+          await Api.updateRecurringTransaction(rule.id, { next_date: advanceRecurringDate(rule.next_date, rule.frequency) });
+        });
+        await refreshApp();
+      } catch (err) {
+        alertDialog(t('err_recurring_confirm_failed') + err.message);
+      }
+    });
+
+    row.querySelector('.notif-skip').addEventListener('click', async (e) => {
+      try {
+        await withBusy(e.currentTarget, '…', () => Api.updateRecurringTransaction(rule.id, { next_date: advanceRecurringDate(rule.next_date, rule.frequency) }));
+        await refreshApp();
+      } catch (err) {
+        alertDialog(t('err_recurring_confirm_failed') + err.message);
+      }
+    });
+  });
+}
+
 export function renderOverview() {
   const cash = cashAccount();
   const memberBalances = state.members.map((m) => ({
@@ -69,6 +133,7 @@ export function renderOverview() {
   const cashBalance = accountBalance(cash);
 
   return `
+    ${renderNotificationsBanner()}
     ${renderMonthlySummaryBanner()}
     <div class="card gauge-card">
       <div id="overview-total-gauge"></div>
@@ -111,6 +176,8 @@ export function renderOverview() {
 }
 
 export function attachOverviewEvents() {
+  attachNotificationsBannerEvents();
+
   const closeBtn = document.getElementById('summary-banner-close');
   if (closeBtn) {
     closeBtn.addEventListener('click', () => {

@@ -1329,6 +1329,31 @@ main#app {
   padding: 2px 6px;
 }
 
+/* ---------- Баннер уведомлений (бюджет / повторяющиеся операции) ---------- */
+
+.notif-banner {
+  border-inline-start: 4px solid var(--expense);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.notif-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: var(--text-sm);
+}
+
+.notif-row-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
 /* ---------- Импорт из Excel ---------- */
 
 .import-table-wrap {
