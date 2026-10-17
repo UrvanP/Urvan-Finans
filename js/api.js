@@ -63,10 +63,10 @@ export const Api = {
     return data;
   },
 
-  async addAccount({ member_id, type, name, initial_balance, icon }) {
+  async addAccount({ member_id, type, name, initial_balance, icon, goal_amount, currency }) {
     const { data, error } = await db
       .from('accounts')
-      .insert({ member_id, type, name, initial_balance: initial_balance || 0, icon: icon || null })
+      .insert({ member_id, type, name, initial_balance: initial_balance || 0, icon: icon || null, goal_amount: goal_amount || null, currency: currency || null })
       .select()
       .single();
     if (error) throw error;

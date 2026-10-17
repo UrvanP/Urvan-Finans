@@ -566,6 +566,12 @@ main#app {
   }
 }
 
+.foreign-currency-note {
+  margin-top: 10px;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+
 .balance-card .label {
   color: var(--text-muted);
   font-size: var(--text-sm);
@@ -876,6 +882,16 @@ main#app {
 .savings-delta {
   margin-top: 4px;
   font-size: var(--text-sm);
+}
+
+.goal-progress {
+  margin-top: 14px;
+}
+
+.goal-progress-text {
+  margin-top: 5px;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
 }
 
 /* ---------- Модалки ---------- */

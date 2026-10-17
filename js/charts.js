@@ -3,7 +3,7 @@
 // индикатора. Показываются прямо на нужной вкладке, а не в отдельном разделе.
 // Самописный inline SVG вместо библиотеки — оправдано для такого
 // небольшого проекта без сборки.
-import { state, checkpointsSorted, avatarColor, displayMemberName } from './state.js';
+import { state, checkpointsSorted, avatarColor, displayMemberName, currencySymbol, isForeignCurrency } from './state.js';
 import { t } from './i18n.js';
 import { escapeHtml, formatMoney, formatDate } from './utils.js';
 import { renderCurrentTab } from './tabs.js';
@@ -335,7 +335,9 @@ export function computeSingleAccountSeries(account) {
 // значение другой серии вперёд (forward-fill).
 export function computeNetWorthSeries() {
   const liquid = computeLiquidSeries();
-  const savingsAccounts = state.accounts.filter((a) => a.type === 'savings');
+  // Копилки в другой валюте исключены — без конвертации их нельзя честно
+  // сложить с остальным капиталом в ₪ (см. isForeignCurrency в state.js).
+  const savingsAccounts = state.accounts.filter((a) => a.type === 'savings' && !isForeignCurrency(a));
   const initialSavingsTotal = savingsAccounts.reduce((s, a) => s + (Number(a.initial_balance) || 0), 0);
 
   const savingsAccountIds = new Set(savingsAccounts.map((a) => a.id));
@@ -462,7 +464,7 @@ export function renderCheckpointBalanceChart(rootId, account) {
 
   drawLineChart(rootId, dates.slice(range.start, range.end + 1), [
     { label: t('chart_balance_title'), values: values.slice(range.start, range.end + 1), color: 'var(--accent)', width: 3 },
-  ]);
+  ], currencySymbol(account.currency));
 }
 
 // Строит плавную кривую через все точки (Catmull-Rom → кубический Безье,
@@ -495,7 +497,7 @@ const lineHiddenState = new Map();
 // area-chart в референсных finance-приложениях) — остальные линии тоньше,
 // для контекста. Если линий больше одной, по легенде можно кликать — линия
 // скрывается/появляется, а масштаб графика пересчитывается по видимым.
-export function drawLineChart(rootId, dates, lines) {
+export function drawLineChart(rootId, dates, lines, currencySym = '₪') {
   const root = document.getElementById(rootId);
   if (!dates || dates.length < 2) { root.innerHTML = `<div class="chart-empty">${t('chart_no_data')}</div>`; return; }
 
@@ -594,7 +596,7 @@ export function drawLineChart(rootId, dates, lines) {
     tooltip.style.left = (cx / scaleX) + 'px';
     tooltip.style.top = (yAt(visibleLines[0].values[idx]) / scaleY) + 'px';
     tooltip.innerHTML = `<strong>${formatDate(dates[idx])}</strong><br>` +
-      visibleLines.map((l) => `<span style="color:${l.color}">●</span> ${escapeHtml(l.label)}: <span class="money-value">${formatMoney(l.values[idx])}</span>`).join('<br>');
+      visibleLines.map((l) => `<span style="color:${l.color}">●</span> ${escapeHtml(l.label)}: <span class="money-value">${formatMoney(l.values[idx], currencySym)}</span>`).join('<br>');
   };
   const hideTooltip = () => {
     crosshair.style.display = 'none';

@@ -1,5 +1,5 @@
 // Вкладка члена семьи: подвкладки "Банк счёт" / копилки.
-import { state, currentAccountOf, savingsAccountsOf, accountBalance, checkpointsSorted, displayMemberName } from '../state.js';
+import { state, currentAccountOf, savingsAccountsOf, accountBalance, checkpointsSorted, displayMemberName, currencySymbol } from '../state.js';
 import { t } from '../i18n.js';
 import { escapeHtml, formatMoney, formatDate } from '../utils.js';
 import { renderPeriodControl, attachPeriodControl, renderAccountBalanceChart, drawPieChart, renderExpenseTable, renderCheckpointBalanceChart } from '../charts.js';
@@ -69,17 +69,36 @@ function renderBankSubtab(member, account) {
   `;
 }
 
+// Полоска прогресса к целевой сумме копилки — ничего не рисует, если цель
+// не задана (goal_amount не указан при создании/редактировании копилки).
+function renderGoalProgress(account, balance, sym) {
+  if (!account.goal_amount) return '';
+  const pct = (balance / account.goal_amount) * 100;
+  const reached = balance >= account.goal_amount;
+  return `
+    <div class="goal-progress">
+      <div class="expense-row-bar-track">
+        <div class="expense-row-bar" style="width:${Math.min(100, Math.max(0, pct)).toFixed(1)}%; background:${reached ? 'var(--income)' : 'var(--accent)'}"></div>
+      </div>
+      <div class="goal-progress-text">
+        ${t('savings_goal_label')}: <span class="money-value">${formatMoney(account.goal_amount, sym)}</span>
+        · ${Math.max(0, pct).toFixed(0)}%${reached ? ` · ${t('savings_goal_reached')} 🎉` : ''}
+      </div>
+    </div>`;
+}
+
 function renderSavingsSubtab(account) {
   if (!account) return `<div class="empty-hint">${t('empty_account_not_found')}</div>`;
   const balance = accountBalance(account);
   const cps = checkpointsSorted(account.id, 'desc');
+  const sym = currencySymbol(account.currency);
 
   let deltaHtml = `<span class="tx-meta">${t('savings_no_checkpoints_yet')}</span>`;
   if (cps.length >= 2) {
     const delta = Number(cps[0].balance) - Number(cps[1].balance);
     const cls = delta >= 0 ? 'income' : 'expense';
     const sign = delta >= 0 ? '+' : '−';
-    deltaHtml = `<span class="tx-amount money-value ${cls}">${sign} ${formatMoney(Math.abs(delta))}</span> <span class="tx-meta">${t('savings_since')}${formatDate(cps[1].date)}</span>`;
+    deltaHtml = `<span class="tx-amount money-value ${cls}">${sign} ${formatMoney(Math.abs(delta), sym)}</span> <span class="tx-meta">${t('savings_since')}${formatDate(cps[1].date)}</span>`;
   } else if (cps.length === 1) {
     deltaHtml = `<span class="tx-meta">${t('savings_checkpoint_from')}${formatDate(cps[0].date)}</span>`;
   }
@@ -89,7 +108,7 @@ function renderSavingsSubtab(account) {
       <div class="savings-header-top">
         <div>
           <div class="label">${account.icon ? `<span class="item-icon">${escapeHtml(account.icon)}</span>` : ''}${escapeHtml(account.name)}</div>
-          <div class="amount money-value">${formatMoney(balance)}</div>
+          <div class="amount money-value">${formatMoney(balance, sym)}</div>
           <div class="savings-delta">${deltaHtml}</div>
         </div>
         <div class="tx-actions">
@@ -97,6 +116,7 @@ function renderSavingsSubtab(account) {
           <button class="icon-btn" id="btn-delete-savings" title="${t('delete_title')}">${icon('trash', { size: 17 })}</button>
         </div>
       </div>
+      ${renderGoalProgress(account, balance, sym)}
     </div>
 
     ${cps.length >= 2 ? `
@@ -111,11 +131,11 @@ function renderSavingsSubtab(account) {
       <h2>${t('section_checkpoints')}</h2>
       <button class="btn btn-small" id="btn-add-checkpoint">${t('add_checkpoint_btn')}</button>
     </div>
-    <div id="checkpoint-list">${renderCheckpointRows(cps)}</div>
+    <div id="checkpoint-list">${renderCheckpointRows(cps, sym)}</div>
   `;
 }
 
-function renderCheckpointRows(cps) {
+function renderCheckpointRows(cps, sym) {
   if (!cps.length) return `<div class="empty-hint">${t('empty_no_checkpoints')}</div>`;
   return cps.map((c, idx) => {
     let deltaHtml = `<span class="tx-meta">${t('checkpoint_start')}</span>`;
@@ -123,13 +143,13 @@ function renderCheckpointRows(cps) {
       const delta = Number(c.balance) - Number(cps[idx + 1].balance);
       const cls = delta >= 0 ? 'income' : 'expense';
       const sign = delta >= 0 ? '+' : '−';
-      deltaHtml = `<span class="tx-amount money-value ${cls}">${sign} ${formatMoney(Math.abs(delta))}</span>`;
+      deltaHtml = `<span class="tx-amount money-value ${cls}">${sign} ${formatMoney(Math.abs(delta), sym)}</span>`;
     }
     return renderDataRow({
       id: c.id,
       idAttr: 'cp-id',
       infoHtml: `
-        <span class="tx-category money-value">${formatMoney(c.balance)}</span>
+        <span class="tx-category money-value">${formatMoney(c.balance, sym)}</span>
         <span class="tx-meta">${formatDate(c.date)}${c.comment ? ' · ' + escapeHtml(c.comment) : ''}</span>`,
       amountHtml: deltaHtml,
       editClass: 'cp-edit',

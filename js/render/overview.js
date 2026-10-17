@@ -1,6 +1,6 @@
 // Вкладка "Общий статус": гейдж ликвидных средств, карточки участников,
 // графики и операции по общей наличности.
-import { state, cashAccount, currentAccountOf, accountBalance, avatarColor, displayMemberName } from '../state.js';
+import { state, cashAccount, currentAccountOf, accountBalance, avatarColor, displayMemberName, isForeignCurrency, currencySymbol } from '../state.js';
 import { t } from '../i18n.js';
 import { formatMoney, escapeHtml, animateCountUp } from '../utils.js';
 import { renderPeriodControl, attachPeriodControl, renderNetWorthLineChart, drawPieChart, renderExpenseTable, drawRadialGauge, computeNetWorthMonthlyChange } from '../charts.js';
@@ -53,9 +53,19 @@ export function renderOverview() {
     balance: accountBalance(currentAccountOf(m.id)),
     color: avatarColor(m.name),
   }));
-  const savingsTotal = state.accounts
-    .filter((a) => a.type === 'savings')
+  // Копилки в другой валюте (без конвертации) не входят в общую сумму —
+  // показываем их отдельной строкой, сгруппировав по валюте.
+  const savingsAccounts = state.accounts.filter((a) => a.type === 'savings');
+  const savingsTotal = savingsAccounts
+    .filter((a) => !isForeignCurrency(a))
     .reduce((sum, a) => sum + accountBalance(a), 0);
+  const foreignByCurrency = {};
+  savingsAccounts.filter(isForeignCurrency).forEach((a) => {
+    foreignByCurrency[a.currency] = (foreignByCurrency[a.currency] || 0) + accountBalance(a);
+  });
+  const foreignSummary = Object.entries(foreignByCurrency)
+    .map(([code, sum]) => formatMoney(sum, currencySymbol(code)))
+    .join(', ');
   const cashBalance = accountBalance(cash);
 
   return `
@@ -79,6 +89,7 @@ export function renderOverview() {
         <div class="amount money-value">${formatMoney(savingsTotal)}</div>
       </div>
     </div>
+    ${foreignSummary ? `<div class="foreign-currency-note">${t('foreign_currency_accounts_label')}: <span class="money-value">${foreignSummary}</span></div>` : ''}
 
     ${renderPeriodControl()}
     <div class="card chart-card">
@@ -116,7 +127,7 @@ export function attachOverviewEvents() {
 
   const cash = cashAccount();
   const savingsTotal = state.accounts
-    .filter((a) => a.type === 'savings')
+    .filter((a) => a.type === 'savings' && !isForeignCurrency(a))
     .reduce((sum, a) => sum + accountBalance(a), 0);
   const liquidTotal = state.members
     .reduce((s, m) => s + accountBalance(currentAccountOf(m.id)), 0) + accountBalance(cash);

@@ -7,9 +7,9 @@ export function escapeHtml(str) {
   }[s]));
 }
 
-export function formatMoney(amount) {
+export function formatMoney(amount, symbol = '₪') {
   const n = Number(amount) || 0;
-  return n.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ₪';
+  return n.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ' + symbol;
 }
 
 export function formatDate(isoDate) {

@@ -28,6 +28,28 @@ export const ICON_CHOICES = ['💰', '🏦', '🐷', '💳', '🛒', '🍔', '�
 
 export const AVATAR_COLORS = ['#8a9a2e', '#c2861f', '#c2672c', '#5f7a34', '#a65d3f', '#9c7a3c'];
 
+// Мультивалютность — без конвертации (см. README): счёт в другой валюте
+// просто показывается в своей валюте и не участвует в общих суммах (ликвидность,
+// "Копилки и накопления") — так решил пользователь, чтобы не тащить курсы валют.
+export const CURRENCIES = [
+  { code: 'ILS', symbol: '₪' },
+  { code: 'USD', symbol: '$' },
+  { code: 'EUR', symbol: '€' },
+  { code: 'GBP', symbol: '£' },
+  { code: 'RUB', symbol: '₽' },
+  { code: 'UAH', symbol: '₴' },
+];
+
+export function currencySymbol(code) {
+  const found = CURRENCIES.find((c) => c.code === code);
+  return found ? found.symbol : '₪';
+}
+
+// true для счёта, у которого явно выбрана валюта, отличная от основной (₪).
+export function isForeignCurrency(account) {
+  return !!(account && account.currency && account.currency !== 'ILS');
+}
+
 export function avatarColor(name) {
   const sum = [...name].reduce((s, ch) => s + ch.charCodeAt(0), 0);
   return AVATAR_COLORS[sum % AVATAR_COLORS.length];

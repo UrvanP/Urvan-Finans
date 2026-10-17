@@ -1,6 +1,6 @@
 // Модалки создания/редактирования: операция, копилка (создание/переименование),
 // чекап копилки.
-import { state } from '../state.js';
+import { state, CURRENCIES } from '../state.js';
 import { t } from '../i18n.js';
 import { escapeHtml, todayStr, withBusy } from '../utils.js';
 import { openModal, closeModal, renderIconPicker, wireIconPicker, renderToggleGroup, wireToggleGroup, alertDialog, confirmDialog } from '../modal.js';
@@ -105,6 +105,13 @@ export function openTransactionModal({ accountId, transaction }) {
 
 // ---- Копилки: создание, переименование ----
 
+// Без конвертации валют (см. state.js/isForeignCurrency) — выбор валюты
+// только меняет, в чём показывается сумма этого конкретного счёта.
+function currencyOptions(selected) {
+  const current = selected || 'ILS';
+  return CURRENCIES.map((c) => `<option value="${c.code}" ${current === c.code ? 'selected' : ''}>${c.code} (${c.symbol})</option>`).join('');
+}
+
 export function openNewSavingsModal({ memberId }) {
   openModal(`
     <h3>${t('savings_new_title')}</h3>
@@ -115,6 +122,14 @@ export function openNewSavingsModal({ memberId }) {
     <div class="form-row">
       <label>${t('field_current_amount')}</label>
       <input type="number" id="new-sav-balance" step="0.01" inputmode="decimal" />
+    </div>
+    <div class="form-row">
+      <label>${t('field_goal_amount')}</label>
+      <input type="number" id="new-sav-goal" min="0" step="0.01" inputmode="decimal" />
+    </div>
+    <div class="form-row">
+      <label>${t('field_currency')}</label>
+      <select id="new-sav-currency">${currencyOptions('ILS')}</select>
     </div>
     <div class="form-row">
       <label>${t('field_date')}</label>
@@ -140,6 +155,9 @@ export function openNewSavingsModal({ memberId }) {
   document.getElementById('new-sav-save').addEventListener('click', async (e) => {
     const name = document.getElementById('new-sav-name').value.trim();
     const balance = parseFloat(document.getElementById('new-sav-balance').value);
+    const goalInput = document.getElementById('new-sav-goal').value;
+    const goal_amount = goalInput ? parseFloat(goalInput) : null;
+    const currency = document.getElementById('new-sav-currency').value;
     const date = document.getElementById('new-sav-date').value;
     const comment = document.getElementById('new-sav-comment').value.trim();
 
@@ -149,7 +167,7 @@ export function openNewSavingsModal({ memberId }) {
 
     try {
       await withBusy(e.currentTarget, t('btn_create') + '…', async () => {
-        const account = await Api.addAccount({ member_id: memberId, type: 'savings', name, initial_balance: 0, icon: getIcon() });
+        const account = await Api.addAccount({ member_id: memberId, type: 'savings', name, initial_balance: 0, icon: getIcon(), goal_amount, currency });
         await Api.addCheckpoint({ account_id: account.id, date, balance, comment });
       });
       closeModal();
@@ -170,6 +188,14 @@ export function openRenameSavingsModal(accountId) {
       <input type="text" id="rename-input" value="${escapeHtml(account.name)}" />
     </div>
     <div class="form-row">
+      <label>${t('field_goal_amount')}</label>
+      <input type="number" id="rename-goal" min="0" step="0.01" inputmode="decimal" value="${account.goal_amount != null ? account.goal_amount : ''}" />
+    </div>
+    <div class="form-row">
+      <label>${t('field_currency')}</label>
+      <select id="rename-currency">${currencyOptions(account.currency)}</select>
+    </div>
+    <div class="form-row">
       <label>${t('icon_picker_label')}</label>
       ${renderIconPicker('rename-icon-picker', account.icon)}
     </div>
@@ -184,9 +210,12 @@ export function openRenameSavingsModal(accountId) {
   document.getElementById('rename-cancel').addEventListener('click', closeModal);
   document.getElementById('rename-save').addEventListener('click', async (e) => {
     const name = document.getElementById('rename-input').value.trim();
+    const goalInput = document.getElementById('rename-goal').value;
+    const goal_amount = goalInput ? parseFloat(goalInput) : null;
+    const currency = document.getElementById('rename-currency').value;
     if (!name) { alertDialog(t('err_name_empty')); return; }
     try {
-      await withBusy(e.currentTarget, t('btn_save') + '…', () => Api.updateAccount(accountId, { name, icon: getIcon() }));
+      await withBusy(e.currentTarget, t('btn_save') + '…', () => Api.updateAccount(accountId, { name, icon: getIcon(), goal_amount, currency }));
       closeModal();
       await refreshApp();
     } catch (err) {
