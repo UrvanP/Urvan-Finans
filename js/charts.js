@@ -593,10 +593,18 @@ export function drawLineChart(rootId, dates, lines, currencySym = '₪') {
     crosshair.style.display = 'block';
 
     tooltip.style.display = 'block';
-    tooltip.style.left = (cx / scaleX) + 'px';
     tooltip.style.top = (yAt(visibleLines[0].values[idx]) / scaleY) + 'px';
     tooltip.innerHTML = `<strong>${formatDate(dates[idx])}</strong><br>` +
       visibleLines.map((l) => `<span style="color:${l.color}">●</span> ${escapeHtml(l.label)}: <span class="money-value">${formatMoney(l.values[idx], currencySym)}</span>`).join('<br>');
+
+    // Подсказка центрируется по курсору (transform:translate(-50%,...) в CSS) —
+    // у правого/левого края графика это уводило её центр за пределы карточки,
+    // и цифры оказывались не видны (см. баг-репорт). Зажимаем позицию так,
+    // чтобы сама подсказка целиком оставалась внутри контейнера графика.
+    const desiredLeft = cx / scaleX;
+    const half = tooltip.offsetWidth / 2;
+    const clampedLeft = Math.min(Math.max(desiredLeft, half), bounds.width - half);
+    tooltip.style.left = clampedLeft + 'px';
   };
   const hideTooltip = () => {
     crosshair.style.display = 'none';

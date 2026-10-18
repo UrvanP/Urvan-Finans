@@ -38,10 +38,16 @@ function applyThemeButton() {
   btn.title = `${t('theme_btn_title')}: ${modeLabel}`;
 }
 
+// Простой 2-позиционный переключатель светлая/тёмная — раньше цикл шёл
+// system → light → dark → system, и если системная тема тоже тёмная,
+// клик с "Тёмная" переводил на "Как в системе" без видимой смены цвета:
+// пользователь видел "ночь" дважды подряд, прежде чем дойти до светлой.
+// Переключаем от ТЕКУЩЕЙ ОТОБРАЖАЕМОЙ темы, а не от сохранённого режима —
+// так переключение всегда меняет цвет с первого клика.
 export function cycleTheme() {
-  const order = ['system', 'light', 'dark'];
-  const next = order[(order.indexOf(getTheme()) + 1) % order.length];
-  setTheme(next);
+  const isDarkNow = getTheme() === 'dark'
+    || (getTheme() === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  setTheme(isDarkNow ? 'light' : 'dark');
   applyThemeButton();
   renderCurrentTab();
 }
