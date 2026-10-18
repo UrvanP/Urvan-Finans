@@ -1002,13 +1002,23 @@ main#app {
   font-weight: 600;
 }
 
-.type-toggle button.active[data-type="income"] {
+/* Общий фолбэк для тогглов без цветовой семантики (периодичность,
+   режим импорта) — сначала простой акцентный стиль, затем специфичные
+   для [data-value] правила ниже переопределяют его для расход/доход
+   (выше специфичность за счёт атрибутного селектора, порядок не важен). */
+.type-toggle button.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+
+.type-toggle button.active[data-value="income"] {
   background: var(--income);
   border-color: var(--income);
   color: #fff;
 }
 
-.type-toggle button.active[data-type="expense"] {
+.type-toggle button.active[data-value="expense"] {
   background: var(--expense);
   border-color: var(--expense);
   color: #fff;
@@ -1036,6 +1046,13 @@ main#app {
 
 .category-row input {
   flex: 1;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  font-family: inherit;
+  font-size: var(--text-sm);
 }
 
 .category-group-title {

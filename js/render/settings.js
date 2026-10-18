@@ -100,7 +100,7 @@ function budgetRow(c, spentMap) {
         <span class="item-icon">${c.icon ? escapeHtml(c.icon) : ''}</span>
         <span class="budget-row-name">${escapeHtml(c.name)}</span>
         <input type="number" class="budget-limit-input" min="0" step="0.01" inputmode="decimal" placeholder="${t('budget_no_limit')}" value="${b ? b.monthly_limit : ''}" />
-        <button class="icon-btn budget-save" title="${t('save_name_title')}">${icon('check', { size: 17 })}</button>
+        <button class="icon-btn budget-save" title="${t('save_budget_title')}">${icon('check', { size: 17 })}</button>
       </div>
       ${b ? `
         <div class="goal-progress">
@@ -149,6 +149,7 @@ function recurringRow(r) {
       <div class="tx-amount money-value ${r.type}">${sign} ${formatMoney(r.amount)}</div>
       <div class="tx-actions">
         <button class="icon-btn rec-edit" title="${t('edit_title')}">${icon('pencil', { size: 17 })}</button>
+        <button class="icon-btn rec-delete" title="${t('delete_title')}">${icon('trash', { size: 17 })}</button>
       </div>
     </div>`;
 }
@@ -160,6 +161,18 @@ function attachRecurringEvents() {
     row.querySelector('.rec-edit').addEventListener('click', () => {
       const rule = state.recurring.find((r) => r.id === id);
       openRecurringModal({ rule });
+    });
+    row.querySelector('.rec-delete').addEventListener('click', async () => {
+      if (!(await confirmDialog(t('confirm_delete_recurring')))) return;
+      const btn = row.querySelector('.rec-delete');
+      btn.disabled = true;
+      try {
+        await Api.deleteRecurringTransaction(id);
+        await refreshApp();
+      } catch (err) {
+        btn.disabled = false;
+        alertDialog(t('err_recurring_delete_failed') + err.message);
+      }
     });
   });
 }
